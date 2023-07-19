@@ -30,6 +30,7 @@ void loop() {
   Serial.println("x 10");
   delay(4000);
   Serial.println("x -20");
-  delay(4000);
+  delay(5000);
+
 }
 

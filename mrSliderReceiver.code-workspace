@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../mrLEDTUBE receiver"
+		},
+		{
+			"path": "../ESP32 WROOM DMX RECEIVER"
 		}
 	]
 }

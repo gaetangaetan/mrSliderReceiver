@@ -225,24 +225,24 @@ void setup() {
 }
 
 void loop() {
-  int mode = dmxChannels[300];
+  int mode = dmxChannels[299];
   //DMX2LEDSTRIP();
   switch (mode)
   {
   case 1: // mouvement slider
           /* code */
     Serial.print(" || dmx300 =");
-    Serial.print(dmxChannels[300]);
+    Serial.print(dmxChannels[299]);
     Serial.print(" | dmx301 =");
-    Serial.print(dmxChannels[301]);
+    Serial.print(dmxChannels[300]);
     Serial.print(" | dmx302 =");
-    Serial.print(dmxChannels[302]);
+    Serial.print(dmxChannels[301]);
     Serial.print(" | dmx303 =");
-    Serial.print(dmxChannels[303]);
+    Serial.print(dmxChannels[302]);
     Serial.print(" | dmx304 =");
-    Serial.print(dmxChannels[304]);
+    Serial.print(dmxChannels[303]);
     Serial.print(" | dmx305 =");
-    Serial.println(dmxChannels[305]);
+    Serial.println(dmxChannels[304]);
     delay(100);
     break;
 
@@ -254,18 +254,18 @@ void loop() {
       Serial.print("Position ");
       Serial.print(i) ;
       Serial.print(" : x =");
-      Serial.print(dmxChannels[306+(5*i)]) ;
+      Serial.print(dmxChannels[305+(5*i)]) ;
       Serial.print(" | pan =");
-      Serial.print(dmxChannels[307+(5*i)]) ;
+      Serial.print(dmxChannels[306+(5*i)]) ;
       Serial.print(" | tilt =");
-      Serial.print(dmxChannels[308+(5*i)]) ;
+      Serial.print(dmxChannels[307+(5*i)]) ;
       Serial.print(" | speed =");
-      Serial.print(dmxChannels[309+(5*i)]) ;
+      Serial.print(dmxChannels[308+(5*i)]) ;
       Serial.print(" | delay =");
-      Serial.print(dmxChannels[310+(5*i)]) ;
+      Serial.print(dmxChannels[309+(5*i)]) ;
       Serial.println(" ");
     }
-    delay(10000);
+    delay(1000);
     break;
 
   default:

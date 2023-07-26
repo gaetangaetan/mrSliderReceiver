@@ -1,5 +1,7 @@
- #include <Arduino.h>
- #include <AccelStepper.h>
+#define FIRMWARE_VERSION 115
+
+#include <Arduino.h>
+#include <AccelStepper.h>
 #include <MultiStepper.h>
 // D5 6 7 ok en input ou output sans restriction
 // dir D0 D3 D4 step D5 D6 D7
@@ -261,6 +263,21 @@ bool runningMode = DMXMODE;
 int lastposX= 0;
 int lastPan=0;
 int lastTilt=0;
+int lastSpeed=0;
+int lastAccel=0;
+
+int coeffPosX = 120;
+int coeffPan = 120;
+int coeffTilt = 30;
+
+int coeffSpeedPosX = 100;
+int coeffSpeedPan = 100;
+int coeffSpeedTilt = 100;
+
+
+int coeffAccelPosX = 100;
+int coeffAccelPan = 50;
+int coeffAccelTilt = 50;
 
 
 /**************************************************************************
@@ -464,7 +481,16 @@ void updateFirmware()
     ESPhttpUpdate.onProgress(update_progress);
     ESPhttpUpdate.onError(update_error);
 
-    t_httpUpdate_return ret = ESPhttpUpdate.update(client, "http://mrsliderfirmware.gaetanstreel.com/mrsliderfirmware.bin");
+    String firmwareURL = "http://mrsliderfirmware.gaetanstreel.com/firmware.bin";
+    firmwareURL.concat(FIRMWARE_VERSION+1);
+
+    Serial.print("firmwareURL = ");
+    Serial.println(firmwareURL);
+    
+  
+
+
+    t_httpUpdate_return ret = ESPhttpUpdate.update(client, firmwareURL.c_str());
     // Or:
     // t_httpUpdate_return ret = ESPhttpUpdate.update(client, "server", 80, "file.bin");
 
@@ -488,28 +514,7 @@ void setup() {
   
   Serial.begin(57600);
 
-  // update automatique à chaque allumage (pendant la conception)
-  Serial.println("tout commence ici!");
-//   // Initialising the UI will init the display too.
-  
-  
-   WiFi.begin("OpenPoulpy", "youhououhou");
-          
-          int tentatives = 0;
-      while (WiFi.status() != WL_CONNECTED)
-      {
-          delay(1000);
-          
-          Serial.print(".");
-          
-          if (tentatives > 20)
-          {            
-            break;
-          }
-          tentatives++;
-      }
-    updateFirmware();
-    // fin update firmware (à retirer quand le code sera bon)
+
 
 
 // initialisation des pins du step motor driver
@@ -522,17 +527,7 @@ void setup() {
   // pinMode(D5,OUTPUT);
   // pinMode(D6,OUTPUT);
 
-    stepper_slider.setMaxSpeed(200.0);
-    stepper_slider.setAcceleration(200.0);
-    stepper_slider.moveTo(500);
-
-    stepper_pan.setMaxSpeed(800.0);
-    stepper_pan.setAcceleration(200.0);
-    stepper_pan.moveTo(2000);
-
-    stepper_tilt.setMaxSpeed(2000.0);
-    stepper_tilt.setAcceleration(200.0);
-    stepper_tilt.moveTo(2000);
+    
 
 
   // display.init();
@@ -571,7 +566,8 @@ void setup() {
 // if((setupTubeNumber<0)||(setupTubeNumber>32))setupTubeNumber=0;
 
 
-  
+//pour signifier la version, on fait bouger le tilt  
+
 
 
 }
@@ -626,6 +622,8 @@ void loop2() {
       Serial.println(dmxChannels[302]);
       delay(100);
     }
+
+    
     
 //      // clear the display
 //    display.clear();
@@ -677,6 +675,34 @@ void loop2() {
 // }
 
 void loop() {
+  if(dmxChannels[500]==255)
+  {
+    dmxChannels[500]=0;
+      // update automatique à chaque allumage (pendant la conception)
+  
+//   // Initialising the UI will init the display too.
+  
+  
+   WiFi.begin("OpenPoulpy", "youhououhou");
+          
+          int tentatives = 0;
+      while (WiFi.status() != WL_CONNECTED)
+      {
+          delay(1000);
+          
+          Serial.print(".");
+          
+          if (tentatives > 20)
+          {            
+            break;
+          }
+          tentatives++;
+      }
+    updateFirmware();
+    delay(1000);
+    // fin update firmware (à retirer quand le code sera bon)
+    
+  }
   //  Change direction at the limits
     // if (stepper_slider.distanceToGo() == 0)
     // {
@@ -700,12 +726,43 @@ void loop() {
     // stepper_tilt.run();
       // delayMicroseconds(500); 
 
-   
-    stepper_slider.moveTo(dmxChannels[300]);   	
+   if(dmxChannels[300]!=lastposX)
+    {
+      lastposX=dmxChannels[300];
+      stepper_slider.moveTo(lastposX*25);   	
+    }
+    
+    if(dmxChannels[301]!=lastPan)
+    {
+      lastPan=dmxChannels[301];
+      stepper_pan.moveTo(lastPan*25);   	
+    }
+    
+    if(dmxChannels[302]!=lastTilt)
+    {
+      lastTilt=dmxChannels[302];
+      stepper_tilt.moveTo(lastTilt*25);   	
+    }
+
+    if(dmxChannels[303]!=lastSpeed)
+    {
+      lastSpeed=dmxChannels[303];
+      stepper_slider.setMaxSpeed(lastSpeed * coeffSpeedPosX );
+      stepper_pan.setMaxSpeed(lastSpeed * coeffSpeedPan );
+      stepper_tilt.setMaxSpeed(lastSpeed * coeffAccelTilt );
+      
+    }
+
+    if(dmxChannels[304]!=lastAccel)
+    {
+      lastAccel=dmxChannels[304];
+      stepper_slider.setAcceleration(lastAccel * coeffAccelPosX );
+      stepper_pan.setAcceleration(lastAccel * coeffAccelPan );
+      stepper_tilt.setAcceleration(lastAccel * coeffAccelTilt );      
+    }
+
     stepper_slider.run();
-    stepper_pan.moveTo(dmxChannels[301]);   	
     stepper_pan.run();
-    stepper_tilt.moveTo(dmxChannels[302]);   	
     stepper_tilt.run();
 
         

@@ -1,4 +1,4 @@
-#define FIRMWARE_VERSION 118
+#define FIRMWARE_VERSION 126
 
 #include <Arduino.h>
 #include <AccelStepper.h>
@@ -268,16 +268,18 @@ int lastAccel=0;
 
 int coeffPosX = 200;
 int coeffPan = 100;
-int coeffTilt = 30;
+int coeffTilt = 25;
 
 int coeffSpeedPosX = 100;
-int coeffSpeedPan = 40;
-int coeffSpeedTilt = 40;
+int coeffSpeedPan = 80;
+int coeffSpeedTilt = 20;
 
 
 int coeffAccelPosX = 100;
 int coeffAccelPan = 50;
 int coeffAccelTilt = 50;
+
+int seqpos = 1;
 
 
 /**************************************************************************
@@ -377,64 +379,7 @@ double mrdoublemodulo(double nombre, double diviseur)
   return nombre;
 }
 
-void DMX2LEDSTRIP()
-{
-  float position = 0;
-  float pan = 0;
-  float tilt = 0;
 
-  setupMode = dmxChannels[300];
-
-  switch (setupMode)
-  {
-  case 1: // mouvement slider
-
-    position = dmxChannels[301];
-    Serial.print("x ");
-    Serial.println(position);
-    delay(100);
-    pan = dmxChannels[302];
-    Serial.print("p ");
-    Serial.println(pan);
-    delay(100);
-    tilt = dmxChannels[303];
-    Serial.print("t ");
-    Serial.println(tilt);
-    delay(100);
-    break;
-
-  case 2: // enregistrement positions array
-
-    Serial.println("C"); // clear all positions in the moves array
-    Serial.println("["); // move to the first position in the moves array
-
-    for (int i = 0; i < 50; i += 5)
-    {
-      position = dmxChannels[306 + i];
-      pan = dmxChannels[307 + i];
-      tilt = dmxChannels[308 + i];
-
-      Serial.print("x ");
-      Serial.println(position);
-      Serial.print("p ");
-      Serial.println(pan);
-      Serial.print("t ");
-      Serial.println(tilt);
-      delay(5000);
-      Serial.println("#"); // add current position to the moves array
-      delay(100);
-    }
-
-    break;
-
-    case 3: // lancement séquence
-
-    Serial.println("["); // move to the first position in the moves array
-    // todo
-    
-    break;
-  }
-}
 
 
 
@@ -572,101 +517,7 @@ void setup() {
 
 }
 
-void loop2() {
-  int mode = dmxChannels[299];
-  //DMX2LEDSTRIP();
-  switch (mode)
-  {
-  case 1: // mouvement slider
-          /* code */
 
-
-    if(dmxChannels[303]!=0)
-    {
-        Serial.print(0x04); //INSTRUCTION_BYTES_SLIDER_PAN_TILT_SPEED 
-        
-        Serial.print(0x00);
-        Serial.print(0x00);
-        
-        Serial.print(0x00);
-        Serial.print(0x00);
-
-        Serial.print(0x00);
-        byte tiltspeed = dmxChannels[304];
-        Serial.println(tiltspeed);
-        delay(10);
-      
-      return;
-    }
-
-    if(dmxChannels[300]!=lastposX)
-    {
-      lastposX = dmxChannels[300];
-      Serial.print("x ");
-      Serial.println(dmxChannels[300]);
-      delay(100);
-    }
-
-    if(dmxChannels[301]!=lastPan)
-    {
-      lastPan = dmxChannels[301];
-      Serial.print("p ");
-      Serial.println(dmxChannels[301]);
-      delay(100);
-    }
-
-    if(dmxChannels[302]!=lastTilt)
-    {
-      lastTilt = dmxChannels[302];
-      Serial.print("t ");
-      Serial.println(dmxChannels[302]);
-      delay(100);
-    }
-
-    
-    
-//      // clear the display
-//    display.clear();
-// //   // draw the current demo method
-
-
-//    display.setFont(ArialMT_Plain_10);
-//    display.setTextAlignment(TEXT_ALIGN_LEFT);
-   
-//   // display.drawString(1,1, String(dmxChannels[302]));
-//    display.drawString(1,1, String(dmxChannels[300]));
-// //   // write the buffer to the display
-//    display.display();
-//    delay(10);
-    
-    break;
-
-  case 2: // lancement séquence
-          /* code */
-    Serial.println("Tableau des positions, pan, tilt, delay speed");    
-    for(int i=1;i<10;i++)
-    {
-      // Serial.print("Position ");
-      // Serial.print(i) ;
-      // Serial.print(" : x =");
-      // Serial.print(dmxChannels[305+(5*i)]) ;
-      // Serial.print(" | pan =");
-      // Serial.print(dmxChannels[306+(5*i)]) ;
-      // Serial.print(" | tilt =");
-      // Serial.print(dmxChannels[307+(5*i)]) ;
-      // Serial.print(" | speed =");
-      // Serial.print(dmxChannels[308+(5*i)]) ;
-      // Serial.print(" | delay =");
-      // Serial.print(dmxChannels[309+(5*i)]) ;
-      // Serial.println(" ");
-    }
-    delay(1000);
-    break;
-
-  default:
-    break;
-  }
-}
 
 
 
@@ -683,15 +534,24 @@ void setSpeed(int speed)
 
 void gotoPosition(int posNumber)
 {
-   stepper_slider.moveTo(dmxChannels[300+(5*posNumber)]*coeffPosX);
-    stepper_pan.moveTo(dmxChannels[301 + (5*posNumber)]*coeffPan);
-    stepper_tilt.moveTo(dmxChannels[302+ (5*posNumber)]*coeffTilt);
-    while((stepper_slider.distanceToGo()>0) || (stepper_pan.distanceToGo()>0) || (stepper_tilt.distanceToGo()>0))
-    {
-          stepper_slider.run();
-          stepper_pan.run();
-          stepper_tilt.run();
-    }
+      lastposX = dmxChannels[300 + (5 * posNumber)];
+      stepper_slider.moveTo(lastposX * coeffPosX);
+
+      lastPan = dmxChannels[301 + (5 * posNumber)];
+      stepper_pan.moveTo(lastPan * coeffPan);
+
+      lastTilt = dmxChannels[302 + (5 * posNumber)];
+      stepper_tilt.moveTo(lastTilt * coeffTilt);
+
+      while ((stepper_slider.distanceToGo() > 0) || (stepper_pan.distanceToGo() > 0) || (stepper_tilt.distanceToGo() > 0))
+      {
+    if (stepper_slider.distanceToGo() > 0)
+      stepper_slider.run();
+    if (stepper_pan.distanceToGo() > 0)
+      stepper_pan.run();
+    if (stepper_tilt.distanceToGo() > 0)
+      stepper_tilt.run();
+      }
 }
 
 void loop() {
@@ -729,6 +589,24 @@ void loop() {
 
   if(currentpos<11)
   {
+    seqpos=currentpos;
+       if(dmxChannels[303+(5*currentpos)]!=lastSpeed)
+    {
+      lastSpeed=dmxChannels[303+(5*currentpos)];
+      stepper_slider.setMaxSpeed(lastSpeed * coeffSpeedPosX );
+      stepper_pan.setMaxSpeed(lastSpeed * coeffSpeedPan );
+      stepper_tilt.setMaxSpeed(lastSpeed * coeffSpeedTilt );
+      
+    }
+
+    if(dmxChannels[304]!=lastAccel)
+    {
+      lastAccel=dmxChannels[304];
+      stepper_slider.setAcceleration(lastAccel * coeffAccelPosX );
+      stepper_pan.setAcceleration(lastAccel * coeffAccelPan );
+      stepper_tilt.setAcceleration(lastAccel * coeffAccelTilt );      
+    }
+  
     if(dmxChannels[300+(5*currentpos)]!=lastposX)
     {
       lastposX=dmxChannels[300+(5*currentpos)];
@@ -753,100 +631,57 @@ void loop() {
     stepper_pan.run();
     stepper_tilt.run();
 
+    
+
   }
-  else if (currentpos<255) // entre 11 et 254, on revient à la postition 1 (pour préparer une séquence)
-  {
-   gotoPosition(1);
-   return;
-  }
+  // else if (currentpos<255) // entre 11 et 254, on revient à la postition 1 (pour préparer une séquence)
+  // {
+  //   seqpos=1;
+    
+  //   if (dmxChannels[305] != lastposX)
+  //   {
+  //     lastposX = dmxChannels[305];
+  //     stepper_slider.moveTo(lastposX * coeffPosX);
+  //   }
+
+  //   if (dmxChannels[306] != lastPan)
+  //   {
+  //     lastPan = dmxChannels[306];
+  //     stepper_pan.moveTo(lastPan * coeffPan);
+  //   }
+
+  //   if (dmxChannels[307] != lastTilt)
+  //   {
+  //     lastTilt = dmxChannels[307];
+  //     stepper_tilt.moveTo(lastTilt * coeffTilt);
+  //   }
+  //       stepper_slider.run();
+  //   stepper_pan.run();
+  //   stepper_tilt.run();
+  // }
   else if (currentpos==255) // on lance la séquence
   {
-    for (int i=1;i<11;i++)
-    {
-      setSpeed(dmxChannels[303+(5*i)]);
-      gotoPosition(i);
-      delay(100*dmxChannels[304+(5*i)]);
-    }
-    return;
-  }
-
-
-   if(dmxChannels[303]!=lastSpeed)
-    {
-      lastSpeed=dmxChannels[303];
+    if((seqpos<1) || (seqpos>10))seqpos=1;
+    
+        
+        stepper_slider.moveTo(dmxChannels[300 + (5 * seqpos)] * coeffPosX);
+        stepper_pan.moveTo(dmxChannels[301 + (5 * seqpos)] * coeffPan);
+        stepper_tilt.moveTo(dmxChannels[302 + (5 * seqpos)] * coeffTilt);
+    
+      lastSpeed = dmxChannels[303 + (5 * seqpos)];
       stepper_slider.setMaxSpeed(lastSpeed * coeffSpeedPosX );
       stepper_pan.setMaxSpeed(lastSpeed * coeffSpeedPan );
       stepper_tilt.setMaxSpeed(lastSpeed * coeffSpeedTilt );
+
+      if(!stepper_slider.run() && !stepper_pan.run() && !stepper_tilt.run()) // quand les moteurs ont tous atteints leur cible, on passe à la postition suivante dans la séquence
+      {
+        seqpos++;
+        //delay(1000);
+        delay(100 * dmxChannels[304 + (5 * seqpos)]);
+      }
       
-    }
+  }
 
-    if(dmxChannels[304]!=lastAccel)
-    {
-      lastAccel=dmxChannels[304];
-      stepper_slider.setAcceleration(lastAccel * coeffAccelPosX );
-      stepper_pan.setAcceleration(lastAccel * coeffAccelPan );
-      stepper_tilt.setAcceleration(lastAccel * coeffAccelTilt );      
-    }
-  
-   
-  
-
-
-        
-    // Serial.println("Tableau des positions, pan, tilt, delay speed");    
-    // for(int i=-1;i<10;i++)
-    // {
-    //   Serial.print("Position ");
-    //   Serial.print(i) ;
-    //   Serial.print(" : x =");
-    //   Serial.print(dmxChannels[305+(5*i)]) ;
-    //   Serial.print(" | pan =");
-    //   Serial.print(dmxChannels[306+(5*i)]) ;
-    //   Serial.print(" | tilt =");
-    //   Serial.print(dmxChannels[307+(5*i)]) ;
-    //   Serial.print(" | speed =");
-    //   Serial.print(dmxChannels[308+(5*i)]) ;
-    //   Serial.print(" | delay =");
-    //   Serial.print(dmxChannels[309+(5*i)]) ;
-    //   Serial.println(" ");
-    // }
-    // delay(1000);
-
-  //  Serial.print("position = ");
-  // Serial.println(stepper_slider.currentPosition());
-  // digitalWrite(D5,HIGH);    
-  // for(int i=0;i<5000;i++)
-  // {
-  //   digitalWrite(D6,HIGH);
-  //   delayMicroseconds(200); 
-  //   digitalWrite(D6,LOW);
-  //   delayMicroseconds(200); 
-  // }
-  // delay(500);
-  // digitalWrite(D5,LOW);    
-  // for(int i=0;i<500;i++)
-  // {
-  //   digitalWrite(D6,HIGH);
-  //   delayMicroseconds(500); 
-  //   digitalWrite(D6,LOW);
-  //   delayMicroseconds(500); 
-  // }
-  // delay(500);
-  
-  
-//    display.clear();
-// //   // draw the current demo method
-
-
-//    display.setFont(ArialMT_Plain_10);
-//    display.setTextAlignment(TEXT_ALIGN_LEFT);
-   
-//   // display.drawString(1,1, String(dmxChannels[302]));
-//    display.drawString(0,0, "position = ");
-//    display.drawString(10,10, String(stepper_slider.currentPosition()));
-// //   // write the buffer to the display
-//    display.display();
-//    delay(10);
 
 }
 

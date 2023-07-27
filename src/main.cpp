@@ -1,4 +1,4 @@
-#define FIRMWARE_VERSION 115
+#define FIRMWARE_VERSION 118
 
 #include <Arduino.h>
 #include <AccelStepper.h>
@@ -266,13 +266,13 @@ int lastTilt=0;
 int lastSpeed=0;
 int lastAccel=0;
 
-int coeffPosX = 120;
-int coeffPan = 120;
+int coeffPosX = 200;
+int coeffPan = 100;
 int coeffTilt = 30;
 
 int coeffSpeedPosX = 100;
-int coeffSpeedPan = 100;
-int coeffSpeedTilt = 100;
+int coeffSpeedPan = 40;
+int coeffSpeedTilt = 40;
 
 
 int coeffAccelPosX = 100;
@@ -674,6 +674,26 @@ void loop2() {
 // Serial.begin(57600) ;
 // }
 
+void setSpeed(int speed)
+{
+      stepper_slider.setMaxSpeed(speed * coeffSpeedPosX );
+      stepper_pan.setMaxSpeed(speed * coeffSpeedPan );
+      stepper_tilt.setMaxSpeed(speed * coeffSpeedTilt );
+}
+
+void gotoPosition(int posNumber)
+{
+   stepper_slider.moveTo(dmxChannels[300+(5*posNumber)]*coeffPosX);
+    stepper_pan.moveTo(dmxChannels[301 + (5*posNumber)]*coeffPan);
+    stepper_tilt.moveTo(dmxChannels[302+ (5*posNumber)]*coeffTilt);
+    while((stepper_slider.distanceToGo()>0) || (stepper_pan.distanceToGo()>0) || (stepper_tilt.distanceToGo()>0))
+    {
+          stepper_slider.run();
+          stepper_pan.run();
+          stepper_tilt.run();
+    }
+}
+
 void loop() {
   if(dmxChannels[500]==255)
   {
@@ -703,53 +723,60 @@ void loop() {
     // fin update firmware (à retirer quand le code sera bon)
     
   }
-  //  Change direction at the limits
-    // if (stepper_slider.distanceToGo() == 0)
-    // {
-    //   stepper_slider.moveTo(-stepper_slider.currentPosition());
-    // }	
+  int currentpos = dmxChannels[299];
 
-    // stepper_slider.run();
 
-    //     if (stepper_pan.distanceToGo() == 0)
-    // {
-    //   stepper_pan.moveTo(-stepper_pan.currentPosition());
-    // }	
 
-    // stepper_pan.run();
-
-    //     if (stepper_tilt.distanceToGo() == 0)
-    // {
-    //   stepper_tilt.moveTo(-stepper_tilt.currentPosition());
-    // }	
-
-    // stepper_tilt.run();
-      // delayMicroseconds(500); 
-
-   if(dmxChannels[300]!=lastposX)
+  if(currentpos<11)
+  {
+    if(dmxChannels[300+(5*currentpos)]!=lastposX)
     {
-      lastposX=dmxChannels[300];
-      stepper_slider.moveTo(lastposX*25);   	
+      lastposX=dmxChannels[300+(5*currentpos)];
+      stepper_slider.moveTo(lastposX*coeffPosX);   	
     }
     
-    if(dmxChannels[301]!=lastPan)
+    if(dmxChannels[301+(5*currentpos)]!=lastPan)
     {
-      lastPan=dmxChannels[301];
-      stepper_pan.moveTo(lastPan*25);   	
+      lastPan=dmxChannels[301+(5*currentpos)];
+      stepper_pan.moveTo(lastPan*coeffPan);   	
     }
     
-    if(dmxChannels[302]!=lastTilt)
+    if(dmxChannels[302+(5*currentpos)]!=lastTilt)
     {
-      lastTilt=dmxChannels[302];
-      stepper_tilt.moveTo(lastTilt*25);   	
+      lastTilt=dmxChannels[302+(5*currentpos)];
+      stepper_tilt.moveTo(lastTilt*coeffTilt);   	
     }
 
-    if(dmxChannels[303]!=lastSpeed)
+     
+
+    stepper_slider.run();
+    stepper_pan.run();
+    stepper_tilt.run();
+
+  }
+  else if (currentpos<255) // entre 11 et 254, on revient à la postition 1 (pour préparer une séquence)
+  {
+   gotoPosition(1);
+   return;
+  }
+  else if (currentpos==255) // on lance la séquence
+  {
+    for (int i=1;i<11;i++)
+    {
+      setSpeed(dmxChannels[303+(5*i)]);
+      gotoPosition(i);
+      delay(100*dmxChannels[304+(5*i)]);
+    }
+    return;
+  }
+
+
+   if(dmxChannels[303]!=lastSpeed)
     {
       lastSpeed=dmxChannels[303];
       stepper_slider.setMaxSpeed(lastSpeed * coeffSpeedPosX );
       stepper_pan.setMaxSpeed(lastSpeed * coeffSpeedPan );
-      stepper_tilt.setMaxSpeed(lastSpeed * coeffAccelTilt );
+      stepper_tilt.setMaxSpeed(lastSpeed * coeffSpeedTilt );
       
     }
 
@@ -760,10 +787,10 @@ void loop() {
       stepper_pan.setAcceleration(lastAccel * coeffAccelPan );
       stepper_tilt.setAcceleration(lastAccel * coeffAccelTilt );      
     }
+  
+   
+  
 
-    stepper_slider.run();
-    stepper_pan.run();
-    stepper_tilt.run();
 
         
     // Serial.println("Tableau des positions, pan, tilt, delay speed");    

@@ -1,4 +1,4 @@
-#define FIRMWARE_VERSION 126
+#define FIRMWARE_VERSION 127
 
 #include <Arduino.h>
 #include <AccelStepper.h>
@@ -12,207 +12,11 @@
 #define PIN_PAN_STEP D6
 #define PIN_TILT_STEP D7
 
+
 AccelStepper stepper_slider = AccelStepper(1, PIN_SLIDER_STEP, PIN_SLIDER_DIR);
 AccelStepper stepper_pan = AccelStepper(1, PIN_PAN_STEP, PIN_PAN_DIR );
 AccelStepper stepper_tilt = AccelStepper(1, PIN_TILT_STEP, PIN_TILT_DIR);
-/**
-   The MIT License (MIT)
 
-   Copyright (c) 2018 by ThingPulse, Daniel Eichhorn
-   Copyright (c) 2018 by Fabrice Weinberg
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in all
-   copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-   SOFTWARE.
-
-   ThingPulse invests considerable time and money to develop these open source libraries.
-   Please support us by buying our products (and not the clones) from
-   https://thingpulse.com
-
-*/
-
-// Include the correct display library
-
-// For a connection via I2C using the Arduino Wire include:
-// #include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
-// #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
-// OR #include "SH1106Wire.h"   // legacy: #include "SH1106.h"
-
-// For a connection via I2C using brzo_i2c (must be installed) include:
-// #include <brzo_i2c.h>        // Only needed for Arduino 1.6.5 and earlier
-// #include "SSD1306Brzo.h"
-// OR #include "SH1106Brzo.h"
-
-// For a connection via SPI include:
-// #include <SPI.h>             // Only needed for Arduino 1.6.5 and earlier
-// #include "SSD1306Spi.h"
-// OR #include "SH1106SPi.h"
-
-
-// Optionally include custom images
-//#include "images.h"
-
-
-// Initialize the OLED display using Arduino Wire:
-// SSD1306Wire display(0x3c, SDA, SCL);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h e.g. https://github.com/esp8266/Arduino/blob/master/variants/nodemcu/pins_arduino.h
-// SSD1306Wire display(0x3c, D3, D5);  // ADDRESS, SDA, SCL  -  If not, they can be specified manually.
-// SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32);  // ADDRESS, SDA, SCL, OLEDDISPLAY_GEOMETRY  -  Extra param required for 128x32 displays.
-// SH1106Wire display(0x3c, SDA, SCL);     // ADDRESS, SDA, SCL
-
-// Initialize the OLED display using brzo_i2c:
-// SSD1306Brzo display(0x3c, D3, D5);  // ADDRESS, SDA, SCL
-// or
-// SH1106Brzo display(0x3c, D3, D5);   // ADDRESS, SDA, SCL
-
-// Initialize the OLED display using SPI:
-// D5 -> CLK
-// D7 -> MOSI (DOUT)
-// D0 -> RES
-// D2 -> DC
-// D8 -> CS
-// SSD1306Spi display(D0, D2, D8);  // RES, DC, CS
-// or
-// SH1106Spi display(D0, D2);       // RES, DC
-
-
-// #define DEMO_DURATION 3000
-// typedef void (*Demo)(void);
-
-// int demoMode = 0;
-// int counter = 1;
-
-// void setup() {
-//   Serial.begin(115200);
-//   Serial.println();
-//   Serial.println();
-
-
-//   // Initialising the UI will init the display too.
-//   display.init();
-
-//   display.flipScreenVertically();
-//   display.setFont(ArialMT_Plain_10);
-
-// }
-
-// void drawFontFaceDemo() {
-//   // Font Demo1
-//   // create more fonts at http://oleddisplay.squix.ch/
-//   display.setTextAlignment(TEXT_ALIGN_LEFT);
-//   display.setFont(ArialMT_Plain_10);
-//   display.drawString(0, 0, "Hello world");
-//   display.setFont(ArialMT_Plain_16);
-//   display.drawString(0, 10, "Hello world");
-//   display.setFont(ArialMT_Plain_24);
-//   display.drawString(0, 26, "Hello world");
-// }
-
-// void drawTextFlowDemo() {
-//   display.setFont(ArialMT_Plain_10);
-//   display.setTextAlignment(TEXT_ALIGN_LEFT);
-//   display.drawStringMaxWidth(0, 0, 128,
-//                              "Lorem ipsum\n dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore." );
-// }
-
-// void drawTextAlignmentDemo() {
-//   // Text alignment demo
-//   display.setFont(ArialMT_Plain_10);
-
-//   // The coordinates define the left starting point of the text
-//   display.setTextAlignment(TEXT_ALIGN_LEFT);
-//   display.drawString(0, 10, "Left aligned (0,10)");
-
-//   // The coordinates define the center of the text
-//   display.setTextAlignment(TEXT_ALIGN_CENTER);
-//   display.drawString(64, 22, "Center aligned (64,22)");
-
-//   // The coordinates define the right end of the text
-//   display.setTextAlignment(TEXT_ALIGN_RIGHT);
-//   display.drawString(128, 33, "Right aligned (128,33)");
-// }
-
-// void drawRectDemo() {
-//   // Draw a pixel at given position
-//   for (int i = 0; i < 10; i++) {
-//     display.setPixel(i, i);
-//     display.setPixel(10 - i, i);
-//   }
-//   display.drawRect(12, 12, 20, 20);
-
-//   // Fill the rectangle
-//   display.fillRect(14, 14, 17, 17);
-
-//   // Draw a line horizontally
-//   display.drawHorizontalLine(0, 40, 20);
-
-//   // Draw a line horizontally
-//   display.drawVerticalLine(40, 0, 20);
-// }
-
-// void drawCircleDemo() {
-//   for (int i = 1; i < 8; i++) {
-//     display.setColor(WHITE);
-//     display.drawCircle(32, 32, i * 3);
-//     if (i % 2 == 0) {
-//       display.setColor(BLACK);
-//     }
-//     display.fillCircle(96, 32, 32 - i * 3);
-//   }
-// }
-
-// void drawProgressBarDemo() {
-//   int progress = (counter / 5) % 100;
-//   // draw the progress bar
-//   display.drawProgressBar(0, 32, 120, 10, progress);
-
-//   // draw the percentage as String
-//   display.setTextAlignment(TEXT_ALIGN_CENTER);
-//   display.drawString(64, 15, String(progress) + "%");
-// }
-
-// void drawImageDemo() {
-//   // see http://blog.squix.org/2015/05/esp8266-nodemcu-how-to-create-xbm.html
-//   // on how to create xbm files
-//  // display.drawXbm(34, 14, WiFi_Logo_width, WiFi_Logo_height, WiFi_Logo_bits);
-// }
-
-// Demo demos[] = {drawFontFaceDemo, drawTextFlowDemo, drawTextAlignmentDemo, drawRectDemo, drawCircleDemo, drawProgressBarDemo, drawImageDemo};
-// int demoLength = (sizeof(demos) / sizeof(Demo));
-// long timeSinceLastModeSwitch = 0;
-
-// void loop() {
-//   // clear the display
-//   display.clear();
-//   // draw the current demo method
-//   demos[demoMode]();
-
-//   display.setFont(ArialMT_Plain_10);
-//   display.setTextAlignment(TEXT_ALIGN_RIGHT);
-//   display.drawString(128, 54, String(millis()));
-//   // write the buffer to the display
-//   display.display();
-
-//   if (millis() - timeSinceLastModeSwitch > DEMO_DURATION) {
-//     demoMode = (demoMode + 1)  % demoLength;
-//     timeSinceLastModeSwitch = millis();
-//   }
-//   counter++;
-//   delay(10);
-// }
 // version artnet en cours
 
 /* basée sur version fonctionnelle du 15 06 2023
@@ -249,7 +53,6 @@ Le numéro de groupe est enregistré en EEPROM
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 WiFiManager wifiManager;
 #define APNAME "mrLEDTUBE12"
-#define VERSION 14
 
 #include <ArtnetWifi.h>
 WiFiUDP UdpSend;
@@ -258,12 +61,30 @@ ArtnetWifi artnet;
 #define EEPROM_SIZE 32
 #define DMXMODE true
 #define ARTNETMODE false
+
+#define CHANNEL_MODE_SLIDER 299
+
+#define CHANNEL_POSX 300
+#define CHANNEL_PAN 301
+#define CHANNEL_TILT 302
+#define CHANNEL_SPEED_SLIDER 303
+#define CHANNEL_SPEED_PAN 304
+#define CHANNEL_SPEED_TILT 305
+#define CHANNEL_DELAY 306
+
+#define NB_CHANNELS 7
+
+#define CHANNEL_ACCELERATION 511
+#define CHANNEL_UPDATE_SLIDER 512
+
 bool runningMode = DMXMODE;
 
 int lastposX= 0;
 int lastPan=0;
 int lastTilt=0;
-int lastSpeed=0;
+int lastSpeedSlider=0;
+int lastSpeedPan=0;
+int lastSpeedTilt=0;
 int lastAccel=0;
 
 int coeffPosX = 200;
@@ -279,7 +100,7 @@ int coeffAccelPosX = 100;
 int coeffAccelPan = 50;
 int coeffAccelTilt = 50;
 
-int seqpos = 1;
+int position = 1;
 
 
 /**************************************************************************
@@ -469,16 +290,7 @@ void setup() {
   pinMode(PIN_PAN_DIR, OUTPUT);
   pinMode(PIN_TILT_STEP, OUTPUT);
   pinMode(PIN_TILT_DIR, OUTPUT);
-  // pinMode(D5,OUTPUT);
-  // pinMode(D6,OUTPUT);
 
-    
-
-
-  // display.init();
-
-  // display.flipScreenVertically();
-  // display.setFont(ArialMT_Plain_10);
  
   
   WiFi.disconnect();
@@ -500,36 +312,22 @@ void setup() {
     esp_now_register_recv_cb(OnDataRecv);
   
 
-  
-  
-// EEPROM.begin(EEPROM_SIZE);
-// setupAddress = EEPROM.read(0);
-// setupMode = EEPROM.read(4);
-// setupTubeNumber = EEPROM.read(8);
-// if((setupAddress<1)||(setupAddress>512))setupAddress=1;
-// if((setupMode<1)||(setupMode>255))setupMode=1;
-// if((setupTubeNumber<0)||(setupTubeNumber>32))setupTubeNumber=0;
-
-
-//pour signifier la version, on fait bouger le tilt  
-
-
 
 }
 
-
-
-
-
-// void setup() {
-// Serial.begin(57600) ;
-// }
 
 void setSpeed(int speed)
 {
       stepper_slider.setMaxSpeed(speed * coeffSpeedPosX );
       stepper_pan.setMaxSpeed(speed * coeffSpeedPan );
       stepper_tilt.setMaxSpeed(speed * coeffSpeedTilt );
+}
+
+void setSpeedAll(int speedSlider, int speedPan, int speedTilt)
+{
+      stepper_slider.setMaxSpeed(speedSlider * coeffSpeedPosX );
+      stepper_pan.setMaxSpeed(speedPan * coeffSpeedPan );
+      stepper_tilt.setMaxSpeed(speedTilt * coeffSpeedTilt );
 }
 
 void gotoPosition(int posNumber)
@@ -555,13 +353,10 @@ void gotoPosition(int posNumber)
 }
 
 void loop() {
-  if(dmxChannels[500]==255)
+  if(dmxChannels[CHANNEL_UPDATE_SLIDER]==255)
   {
-    dmxChannels[500]=0;
+    dmxChannels[CHANNEL_UPDATE_SLIDER]=0;
       // update automatique à chaque allumage (pendant la conception)
-  
-//   // Initialising the UI will init the display too.
-  
   
    WiFi.begin("OpenPoulpy", "youhououhou");
           
@@ -583,45 +378,56 @@ void loop() {
     // fin update firmware (à retirer quand le code sera bon)
     
   }
-  int currentpos = dmxChannels[299];
+  int mode_slider = dmxChannels[CHANNEL_MODE_SLIDER];
 
 
 
-  if(currentpos<11)
+  if(mode_slider<255)
   {
-    seqpos=currentpos;
-       if(dmxChannels[303+(5*currentpos)]!=lastSpeed)
+    
+    position=mode_slider-1;
+       if(dmxChannels[CHANNEL_SPEED_SLIDER+(NB_CHANNELS*position)]!=lastSpeedSlider)
     {
-      lastSpeed=dmxChannels[303+(5*currentpos)];
-      stepper_slider.setMaxSpeed(lastSpeed * coeffSpeedPosX );
-      stepper_pan.setMaxSpeed(lastSpeed * coeffSpeedPan );
-      stepper_tilt.setMaxSpeed(lastSpeed * coeffSpeedTilt );
+      lastSpeedSlider=dmxChannels[CHANNEL_SPEED_SLIDER+(NB_CHANNELS*position)];
+      stepper_slider.setMaxSpeed(lastSpeedSlider * coeffSpeedPosX );
+      
+    }
+ if(dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)]!=lastSpeedPan)
+    {
+      lastSpeedSlider=dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)];
+      stepper_pan.setMaxSpeed(lastSpeedPan * coeffSpeedPan );
+      
+    }
+     if(dmxChannels[CHANNEL_SPEED_TILT+(NB_CHANNELS*position)]!=lastSpeedTilt)
+    {
+      lastSpeedTilt=dmxChannels[CHANNEL_SPEED_TILT+(NB_CHANNELS*position)];
+      stepper_tilt.setMaxSpeed(lastSpeedTilt * coeffSpeedTilt );
       
     }
 
-    if(dmxChannels[304]!=lastAccel)
+    if(dmxChannels[CHANNEL_ACCELERATION]!=lastAccel)
     {
-      lastAccel=dmxChannels[304];
+      lastAccel=dmxChannels[CHANNEL_ACCELERATION];
       stepper_slider.setAcceleration(lastAccel * coeffAccelPosX );
       stepper_pan.setAcceleration(lastAccel * coeffAccelPan );
       stepper_tilt.setAcceleration(lastAccel * coeffAccelTilt );      
     }
   
-    if(dmxChannels[300+(5*currentpos)]!=lastposX)
+    if(dmxChannels[CHANNEL_POSX+(NB_CHANNELS*position)]!=lastposX)
     {
-      lastposX=dmxChannels[300+(5*currentpos)];
+      lastposX=dmxChannels[CHANNEL_POSX+(NB_CHANNELS*position)];
       stepper_slider.moveTo(lastposX*coeffPosX);   	
     }
     
-    if(dmxChannels[301+(5*currentpos)]!=lastPan)
+    if(dmxChannels[CHANNEL_PAN+(NB_CHANNELS*position)]!=lastPan)
     {
-      lastPan=dmxChannels[301+(5*currentpos)];
+      lastPan=dmxChannels[CHANNEL_PAN+(NB_CHANNELS*position)];
       stepper_pan.moveTo(lastPan*coeffPan);   	
     }
     
-    if(dmxChannels[302+(5*currentpos)]!=lastTilt)
+    if(dmxChannels[CHANNEL_TILT+(NB_CHANNELS*position)]!=lastTilt)
     {
-      lastTilt=dmxChannels[302+(5*currentpos)];
+      lastTilt=dmxChannels[CHANNEL_TILT+(NB_CHANNELS*position)];
       stepper_tilt.moveTo(lastTilt*coeffTilt);   	
     }
 
@@ -634,50 +440,29 @@ void loop() {
     
 
   }
-  // else if (currentpos<255) // entre 11 et 254, on revient à la postition 1 (pour préparer une séquence)
-  // {
-  //   seqpos=1;
-    
-  //   if (dmxChannels[305] != lastposX)
-  //   {
-  //     lastposX = dmxChannels[305];
-  //     stepper_slider.moveTo(lastposX * coeffPosX);
-  //   }
-
-  //   if (dmxChannels[306] != lastPan)
-  //   {
-  //     lastPan = dmxChannels[306];
-  //     stepper_pan.moveTo(lastPan * coeffPan);
-  //   }
-
-  //   if (dmxChannels[307] != lastTilt)
-  //   {
-  //     lastTilt = dmxChannels[307];
-  //     stepper_tilt.moveTo(lastTilt * coeffTilt);
-  //   }
-  //       stepper_slider.run();
-  //   stepper_pan.run();
-  //   stepper_tilt.run();
-  // }
-  else if (currentpos==255) // on lance la séquence
+  else if (mode_slider==255) // on lance la séquence
   {
-    if((seqpos<1) || (seqpos>10))seqpos=1;
+    if((position<1) || (position>10))position=1;
     
         
-        stepper_slider.moveTo(dmxChannels[300 + (5 * seqpos)] * coeffPosX);
-        stepper_pan.moveTo(dmxChannels[301 + (5 * seqpos)] * coeffPan);
-        stepper_tilt.moveTo(dmxChannels[302 + (5 * seqpos)] * coeffTilt);
+        stepper_slider.moveTo(dmxChannels[CHANNEL_POSX + (NB_CHANNELS * position)] * coeffPosX);
+        stepper_pan.moveTo(dmxChannels[CHANNEL_PAN + (NB_CHANNELS * position)] * coeffPan);
+        stepper_tilt.moveTo(dmxChannels[CHANNEL_TILT + (NB_CHANNELS * position)] * coeffTilt);
     
-      lastSpeed = dmxChannels[303 + (5 * seqpos)];
-      stepper_slider.setMaxSpeed(lastSpeed * coeffSpeedPosX );
-      stepper_pan.setMaxSpeed(lastSpeed * coeffSpeedPan );
-      stepper_tilt.setMaxSpeed(lastSpeed * coeffSpeedTilt );
+      lastSpeedSlider = dmxChannels[CHANNEL_SPEED_SLIDER + (NB_CHANNELS * position)];
+      lastSpeedPan = dmxChannels[CHANNEL_SPEED_PAN + (NB_CHANNELS * position)];
+      lastSpeedTilt = dmxChannels[CHANNEL_SPEED_TILT + (NB_CHANNELS * position)];
+      
+      stepper_slider.setMaxSpeed(lastSpeedSlider * coeffSpeedPosX );
+      stepper_pan.setMaxSpeed(lastSpeedPan * coeffSpeedPan );
+      stepper_tilt.setMaxSpeed(lastSpeedTilt * coeffSpeedTilt );
 
       if(!stepper_slider.run() && !stepper_pan.run() && !stepper_tilt.run()) // quand les moteurs ont tous atteints leur cible, on passe à la postition suivante dans la séquence
       {
-        seqpos++;
+        
         //delay(1000);
-        delay(100 * dmxChannels[304 + (5 * seqpos)]);
+        delay(100 * dmxChannels[CHANNEL_DELAY + (NB_CHANNELS * position)]);
+        position++;
       }
       
   }

@@ -1,4 +1,5 @@
-#define FIRMWARE_VERSION 127
+#define FIRMWARE_VERSION 142
+#define DEBUG_ENABLE false
 
 #include <Arduino.h>
 #include <AccelStepper.h>
@@ -11,6 +12,7 @@
 #define PIN_SLIDER_STEP D5
 #define PIN_PAN_STEP D6
 #define PIN_TILT_STEP D7
+
 
 
 AccelStepper stepper_slider = AccelStepper(1, PIN_SLIDER_STEP, PIN_SLIDER_DIR);
@@ -62,6 +64,7 @@ ArtnetWifi artnet;
 #define DMXMODE true
 #define ARTNETMODE false
 
+#define CHANNEL_POS_SLIDER 298
 #define CHANNEL_MODE_SLIDER 299
 
 #define CHANNEL_POSX 300
@@ -74,6 +77,8 @@ ArtnetWifi artnet;
 
 #define NB_CHANNELS 7
 
+#define CHANNEL_OFFSET_PAN 509
+#define CHANNEL_OFFSET_TILT 510
 #define CHANNEL_ACCELERATION 511
 #define CHANNEL_UPDATE_SLIDER 512
 
@@ -85,7 +90,12 @@ int lastTilt=0;
 int lastSpeedSlider=0;
 int lastSpeedPan=0;
 int lastSpeedTilt=0;
+int lastOffsetPan=0;
+int lastOffsetTilt=0;
 int lastAccel=0;
+unsigned long lastPositionTime=0;
+
+bool newPosition = true;
 
 int coeffPosX = 200;
 int coeffPan = 100;
@@ -100,7 +110,11 @@ int coeffAccelPosX = 100;
 int coeffAccelPan = 50;
 int coeffAccelTilt = 50;
 
-int position = 1;
+int position = 0;
+int seqPosition = 0;
+
+unsigned long remainingWaitTime = 0;
+bool sequenceStart = true;
 
 
 /**************************************************************************
@@ -146,7 +160,7 @@ int setupTubeNumber = 1;
 
 int flashInterval;
 
-uint8_t dmxChannels[512];
+uint8_t dmxChannels[513];
 
 typedef struct struct_message {
     uint8_t status;
@@ -186,7 +200,7 @@ void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
   uint8_t packetNumber = incomingDMXPacket.blockNumber;
   for(int i=0;i<128;i++)
   {
-    dmxChannels[(packetNumber*128)+i]=incomingDMXPacket.dmxvalues[i];
+    dmxChannels[(packetNumber*128)+i+1]=incomingDMXPacket.dmxvalues[i];
   }
  
 }
@@ -279,6 +293,8 @@ void setup() {
 
   
   Serial.begin(57600);
+  Serial.print("FIRMWARE VERSION : ");
+  Serial.println(FIRMWARE_VERSION);
 
 
 
@@ -311,6 +327,9 @@ void setup() {
 
     esp_now_register_recv_cb(OnDataRecv);
   
+  // stepper_tilt.setMaxSpeed(200);
+  // stepper_tilt.moveTo(10000);
+
 
 
 }
@@ -330,26 +349,16 @@ void setSpeedAll(int speedSlider, int speedPan, int speedTilt)
       stepper_tilt.setMaxSpeed(speedTilt * coeffSpeedTilt );
 }
 
-void gotoPosition(int posNumber)
+void debug(const char debug_txt[], int debug_var)
 {
-      lastposX = dmxChannels[300 + (5 * posNumber)];
-      stepper_slider.moveTo(lastposX * coeffPosX);
+  if(DEBUG_ENABLE)
+  {
+    Serial.print(debug_txt);
+    Serial.print(" = ");
+    Serial.println(debug_var);
+  }
+  else return;
 
-      lastPan = dmxChannels[301 + (5 * posNumber)];
-      stepper_pan.moveTo(lastPan * coeffPan);
-
-      lastTilt = dmxChannels[302 + (5 * posNumber)];
-      stepper_tilt.moveTo(lastTilt * coeffTilt);
-
-      while ((stepper_slider.distanceToGo() > 0) || (stepper_pan.distanceToGo() > 0) || (stepper_tilt.distanceToGo() > 0))
-      {
-    if (stepper_slider.distanceToGo() > 0)
-      stepper_slider.run();
-    if (stepper_pan.distanceToGo() > 0)
-      stepper_pan.run();
-    if (stepper_tilt.distanceToGo() > 0)
-      stepper_tilt.run();
-      }
 }
 
 void loop() {
@@ -374,27 +383,41 @@ void loop() {
           tentatives++;
       }
     updateFirmware();
+    
     delay(1000);
+    ESP.restart();
     // fin update firmware (à retirer quand le code sera bon)
     
   }
+
+//test pour voir si l'update fonctionne toujours
+      //  stepper_tilt.run();
+
+
+
+ 
+
   int mode_slider = dmxChannels[CHANNEL_MODE_SLIDER];
+  
 
 
 
-  if(mode_slider<255)
+  if(mode_slider==0)
   {
+    position =  dmxChannels[CHANNEL_POS_SLIDER];
+    sequenceStart=true; // au prochain lancement d'une séquence, il faudra initialiser lastPositionTime
     
-    position=mode_slider-1;
+    
        if(dmxChannels[CHANNEL_SPEED_SLIDER+(NB_CHANNELS*position)]!=lastSpeedSlider)
     {
       lastSpeedSlider=dmxChannels[CHANNEL_SPEED_SLIDER+(NB_CHANNELS*position)];
       stepper_slider.setMaxSpeed(lastSpeedSlider * coeffSpeedPosX );
       
     }
- if(dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)]!=lastSpeedPan)
+    
+     if(dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)]!=lastSpeedPan)
     {
-      lastSpeedSlider=dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)];
+      lastSpeedPan=dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)];
       stepper_pan.setMaxSpeed(lastSpeedPan * coeffSpeedPan );
       
     }
@@ -404,6 +427,8 @@ void loop() {
       stepper_tilt.setMaxSpeed(lastSpeedTilt * coeffSpeedTilt );
       
     }
+
+
 
     if(dmxChannels[CHANNEL_ACCELERATION]!=lastAccel)
     {
@@ -419,16 +444,30 @@ void loop() {
       stepper_slider.moveTo(lastposX*coeffPosX);   	
     }
     
+     if(dmxChannels[CHANNEL_OFFSET_PAN]!=lastOffsetPan)
+    {
+      lastOffsetPan=dmxChannels[CHANNEL_OFFSET_PAN];     
+      stepper_pan.moveTo((lastPan-lastOffsetPan)*coeffPan);   	
+    }
+
     if(dmxChannels[CHANNEL_PAN+(NB_CHANNELS*position)]!=lastPan)
     {
       lastPan=dmxChannels[CHANNEL_PAN+(NB_CHANNELS*position)];
-      stepper_pan.moveTo(lastPan*coeffPan);   	
+      stepper_pan.moveTo((lastPan-lastOffsetPan)*coeffPan);   	
     }
     
+   
+
+    if(dmxChannels[CHANNEL_OFFSET_TILT]!=lastOffsetTilt)
+    {
+      lastOffsetTilt=dmxChannels[CHANNEL_OFFSET_TILT];     
+      stepper_tilt.moveTo((lastTilt-lastOffsetTilt)*coeffTilt);   	
+    }
+
     if(dmxChannels[CHANNEL_TILT+(NB_CHANNELS*position)]!=lastTilt)
     {
       lastTilt=dmxChannels[CHANNEL_TILT+(NB_CHANNELS*position)];
-      stepper_tilt.moveTo(lastTilt*coeffTilt);   	
+      stepper_tilt.moveTo((lastTilt-lastOffsetTilt)*coeffTilt);   	
     }
 
      
@@ -440,15 +479,20 @@ void loop() {
     
 
   }
-  else if (mode_slider==255) // on lance la séquence
+  else if (mode_slider>0) // on lance la séquence
   {
-    if((position<1) || (position>10))position=1;
-    
-        
-        stepper_slider.moveTo(dmxChannels[CHANNEL_POSX + (NB_CHANNELS * position)] * coeffPosX);
-        stepper_pan.moveTo(dmxChannels[CHANNEL_PAN + (NB_CHANNELS * position)] * coeffPan);
-        stepper_tilt.moveTo(dmxChannels[CHANNEL_TILT + (NB_CHANNELS * position)] * coeffTilt);
-    
+    if(sequenceStart) // au lancement de la séquence, on initialise lastPositionTime
+    {
+      newPosition=true;
+      lastPositionTime=millis();      
+      sequenceStart = false;
+      debug("position", position);
+    }
+
+    if(newPosition)
+    {
+      if((position<0) || (position>28))position=0;
+
       lastSpeedSlider = dmxChannels[CHANNEL_SPEED_SLIDER + (NB_CHANNELS * position)];
       lastSpeedPan = dmxChannels[CHANNEL_SPEED_PAN + (NB_CHANNELS * position)];
       lastSpeedTilt = dmxChannels[CHANNEL_SPEED_TILT + (NB_CHANNELS * position)];
@@ -457,12 +501,40 @@ void loop() {
       stepper_pan.setMaxSpeed(lastSpeedPan * coeffSpeedPan );
       stepper_tilt.setMaxSpeed(lastSpeedTilt * coeffSpeedTilt );
 
-      if(!stepper_slider.run() && !stepper_pan.run() && !stepper_tilt.run()) // quand les moteurs ont tous atteints leur cible, on passe à la postition suivante dans la séquence
+      stepper_slider.moveTo(dmxChannels[CHANNEL_POSX + (NB_CHANNELS * position)] * coeffPosX);
+      stepper_pan.moveTo((dmxChannels[CHANNEL_PAN + (NB_CHANNELS * position)]-lastOffsetPan) * coeffPan);
+      stepper_tilt.moveTo((dmxChannels[CHANNEL_TILT + (NB_CHANNELS * position)]-lastOffsetTilt) * coeffTilt);
+
+      newPosition=false;
+    }
+    
+    bool srun = stepper_slider.run();
+    bool prun = stepper_pan.run();
+    bool trun = stepper_tilt.run();
+
+      if(!srun && !prun && !trun) // quand les moteurs ont tous atteints leur cible, on passe à la postition suivante dans la séquence
       {
         
         //delay(1000);
-        delay(100 * dmxChannels[CHANNEL_DELAY + (NB_CHANNELS * position)]);
+        unsigned long elapsedTime = millis()-lastPositionTime;
+        unsigned long totalTime = 100 * dmxChannels[CHANNEL_DELAY + (NB_CHANNELS * position)];
+        debug("elapsed time",elapsedTime);
+        debug("total time",totalTime);
+
+        if(totalTime>elapsedTime)
+        {
+          remainingWaitTime=totalTime-elapsedTime;
+          debug("remainingwaittime",remainingWaitTime);
+          delay(remainingWaitTime);
+        }
+        else
+        {
+          debug("remainingwaittime negatif",0);
+        }
         position++;
+        newPosition=true;
+        lastPositionTime=millis();
+        debug("position", position);
       }
       
   }

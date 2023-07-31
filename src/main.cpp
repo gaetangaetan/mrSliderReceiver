@@ -1,4 +1,4 @@
-#define FIRMWARE_VERSION 142
+#define FIRMWARE_VERSION 143
 #define DEBUG_ENABLE false
 
 #include <Arduino.h>
@@ -21,26 +21,7 @@ AccelStepper stepper_tilt = AccelStepper(1, PIN_TILT_STEP, PIN_TILT_DIR);
 
 // version artnet en cours
 
-/* basée sur version fonctionnelle du 15 06 2023
-D1 bouton
-D2 datapin LED strip
-D5 GND bouton
-75 LEDs
-Mode 0 : 234 RGB for all strip at once
-Mode 1 : 234 RGB + 5 LENGTH + 6 OFFSET    
-Mode 2 : 234 RGB + 5 LENGTH + 6 OFFSET tapered
-Mode 3 : 234 RGB + 5 LENGTH + 6 OFFSET + 7 OFFSET TUBE  
-Mode 4 : 234 RGB + 5 LENGTH + 6 OFFSET + 7 OFFSET TUBE (tapered)
-Mode 5 : individual rgb 234 567 ...
-Mode 6 : RGB séparé pour chaque groupe : 234 RGB GRP0, 567 RGB GRP1, 8910 RGB GRP2, ...
-Mode 7 : FX1 Segments montant : 6 canaux par groupe : 234 RGB + 5 longueur segment + 6 longueur espace (pixels éteints entre deux segments) + 7 speed (0 = vitesse max vers le bas, 128 = arrêt, 255 = vitesse max vers le haut)
-Mode 8 : FX2 Segments montant R G B : 6 canaux par groupe : 234 RGB + 5 6 7 longueur segment rgb + 8 9 10 longueur espace rgb (pixels éteints entre deux segments) + 11 12 13 speed r g b (0 = vitesse max vers le bas, 128 = arrêt, 255 = vitesse max vers le haut)
-Mode 255 : on affiche le numéro du groupe (0 à 10)
 
-SETUP (clic long pour y accéder ou en sortir) : réglage du numéro de groupe
-Le nombre de LEDS correspondant au numéro de groupe clignote
-Le numéro de groupe est enregistré en EEPROM
-*/ 
 
 #include <Arduino.h>
 #include <EEPROM.h>
@@ -81,6 +62,8 @@ ArtnetWifi artnet;
 #define CHANNEL_OFFSET_TILT 510
 #define CHANNEL_ACCELERATION 511
 #define CHANNEL_UPDATE_SLIDER 512
+
+#define MINIMUM_SPEED 5
 
 bool runningMode = DMXMODE;
 
@@ -411,20 +394,21 @@ void loop() {
        if(dmxChannels[CHANNEL_SPEED_SLIDER+(NB_CHANNELS*position)]!=lastSpeedSlider)
     {
       lastSpeedSlider=dmxChannels[CHANNEL_SPEED_SLIDER+(NB_CHANNELS*position)];
-      stepper_slider.setMaxSpeed(lastSpeedSlider * coeffSpeedPosX );
+      stepper_slider.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedSlider) * coeffSpeedPosX );
+      
       
     }
     
      if(dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)]!=lastSpeedPan)
     {
       lastSpeedPan=dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)];
-      stepper_pan.setMaxSpeed(lastSpeedPan * coeffSpeedPan );
+      stepper_pan.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedPan) * coeffSpeedPan );
       
     }
      if(dmxChannels[CHANNEL_SPEED_TILT+(NB_CHANNELS*position)]!=lastSpeedTilt)
     {
       lastSpeedTilt=dmxChannels[CHANNEL_SPEED_TILT+(NB_CHANNELS*position)];
-      stepper_tilt.setMaxSpeed(lastSpeedTilt * coeffSpeedTilt );
+      stepper_tilt.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedTilt) * coeffSpeedTilt );
       
     }
 
@@ -497,9 +481,9 @@ void loop() {
       lastSpeedPan = dmxChannels[CHANNEL_SPEED_PAN + (NB_CHANNELS * position)];
       lastSpeedTilt = dmxChannels[CHANNEL_SPEED_TILT + (NB_CHANNELS * position)];
       
-      stepper_slider.setMaxSpeed(lastSpeedSlider * coeffSpeedPosX );
-      stepper_pan.setMaxSpeed(lastSpeedPan * coeffSpeedPan );
-      stepper_tilt.setMaxSpeed(lastSpeedTilt * coeffSpeedTilt );
+      stepper_slider.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedSlider)  * coeffSpeedPosX );
+      stepper_pan.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedPan) * coeffSpeedPan );
+      stepper_tilt.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedTilt) * coeffSpeedTilt );
 
       stepper_slider.moveTo(dmxChannels[CHANNEL_POSX + (NB_CHANNELS * position)] * coeffPosX);
       stepper_pan.moveTo((dmxChannels[CHANNEL_PAN + (NB_CHANNELS * position)]-lastOffsetPan) * coeffPan);

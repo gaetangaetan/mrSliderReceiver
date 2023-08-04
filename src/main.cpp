@@ -1,3 +1,20 @@
+/*
+Description des canaux :
+298	1-28	Numéro de la position actuelle (les positions sont codées sur 7 channels à partir de 300)
+299	0	Mode "MIDI" (le timing est géré par cubase, des notes MIDI déclenchent les changements de position
+299	1	Mode sequence, le slider passe de position en position en commençant à la position en cours (channel 298)
+300-306 position 1 (posx, pan, tilt, speedx, speedpan, speedtilt, delay) Remarque : la valeur delay est exprimée en ms et comprend le temps du mouvement. C'est donc le temps précis entre le début du mouvement en cours et le début du prochain mouvement
+307-308 position 2
+...
+496-502 position 29
+503-508 canaux libres
+509 offset pan
+510 offset tilt
+511 Accélération (un seul paramètre pour les trois axes, un coefficient pour chaque axe est défini dans le code)
+512 update firmware (quand ce channel vaut 255, le slider cherche après une update de la forme http://mrsliderfirmware.gaetanstreel.com/firmware.binXXX) ou "XXX" est le numéro qui suit la version actuelle (FIRMWARE_VERSION)
+
+
+*/
 #define FIRMWARE_VERSION 143
 #define DEBUG_ENABLE false
 

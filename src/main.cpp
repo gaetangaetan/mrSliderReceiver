@@ -306,6 +306,7 @@ void setup() {
   pinMode(PIN_PAN_DIR, OUTPUT);
   pinMode(PIN_TILT_STEP, OUTPUT);
   pinMode(PIN_TILT_DIR, OUTPUT);
+  
 
  
   
@@ -362,6 +363,8 @@ void debug(const char debug_txt[], int debug_var)
 }
 
 void loop() {
+  
+
   if(dmxChannels[CHANNEL_UPDATE_SLIDER]==255)
   {
     dmxChannels[CHANNEL_UPDATE_SLIDER]=0;

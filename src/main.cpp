@@ -1,21 +1,5 @@
-/*
-Description des canaux :
-298	1-28	Numéro de la position actuelle (les positions sont codées sur 7 channels à partir de 300)
-299	0	Mode "MIDI" (le timing est géré par cubase, des notes MIDI déclenchent les changements de position
-299	1	Mode sequence, le slider passe de position en position en commençant à la position en cours (channel 298)
-300-306 position 1 (posx, pan, tilt, speedx, speedpan, speedtilt, delay) Remarque : la valeur delay est exprimée en ms et comprend le temps du mouvement. C'est donc le temps précis entre le début du mouvement en cours et le début du prochain mouvement
-307-308 position 2
-...
-496-502 position 29
-503-508 canaux libres
-509 offset pan
-510 offset tilt
-511 Accélération (un seul paramètre pour les trois axes, un coefficient pour chaque axe est défini dans le code)
-512 update firmware (quand ce channel vaut 255, le slider cherche après une update de la forme http://mrsliderfirmware.gaetanstreel.com/firmware.binXXX) ou "XXX" est le numéro qui suit la version actuelle (FIRMWARE_VERSION)
 
-
-*/
-#define FIRMWARE_VERSION 143
+#define FIRMWARE_VERSION 149
 #define DEBUG_ENABLE false
 
 #include <Arduino.h>
@@ -62,23 +46,27 @@ ArtnetWifi artnet;
 #define DMXMODE true
 #define ARTNETMODE false
 
-#define CHANNEL_POS_SLIDER 298
-#define CHANNEL_MODE_SLIDER 299
 
-#define CHANNEL_POSX 300
-#define CHANNEL_PAN 301
-#define CHANNEL_TILT 302
-#define CHANNEL_SPEED_SLIDER 303
-#define CHANNEL_SPEED_PAN 304
-#define CHANNEL_SPEED_TILT 305
-#define CHANNEL_DELAY 306
+#define CHANNEL_POSX 1
+#define CHANNEL_PAN 2
+#define CHANNEL_TILT 3
+#define CHANNEL_SPEED_SLIDER 4
+#define CHANNEL_SPEED_PAN 5
+#define CHANNEL_SPEED_TILT 6
+#define CHANNEL_ACCELERATION 7
 
+#define CHANNEL_UPDATE_SLIDER 10
+
+#define CHANNEL_POS_SLIDER 20
+#define CHANNEL_MODE_SLIDER 21
+#define CHANNEL_DELAY 21
 #define NB_CHANNELS 7
 
-#define CHANNEL_OFFSET_PAN 509
-#define CHANNEL_OFFSET_TILT 510
-#define CHANNEL_ACCELERATION 511
-#define CHANNEL_UPDATE_SLIDER 512
+
+#define CHANNEL_OFFSET_PAN 24
+#define CHANNEL_OFFSET_TILT 25
+
+
 
 #define MINIMUM_SPEED 5
 
@@ -117,36 +105,7 @@ unsigned long remainingWaitTime = 0;
 bool sequenceStart = true;
 
 
-/**************************************************************************
- This is an example for our Monochrome OLEDs based on SSD1306 drivers
 
- Pick one up today in the adafruit shop!
- ------> http://www.adafruit.com/category/63_98
-
- This example is for a 128x64 pixel display using I2C to communicate
- 3 pins are required to interface (two I2C and one reset).
-
- Adafruit invests time and resources providing this open
- source code, please support Adafruit and open-source
- hardware by purchasing products from Adafruit!
-
- Written by Limor Fried/Ladyada for Adafruit Industries,
- with contributions from the open source community.
- BSD license, check license.txt for more information
- All text above, and the splash screen below must be
- included in any redistribution.
- **************************************************************************/
-
-// #include <SPI.h>
-// #include <Wire.h>
-
-
-// #include <TM1637Display.h>
-// TM1637Display display(D7, D6); // clck DIO
-
-// #include "OneButton.h"
-// OneButton button1(D1, true);
-// Setup a new OneButton on pin D6.  
 
 
 #include <ESP8266WiFiMulti.h>
@@ -365,12 +324,12 @@ void debug(const char debug_txt[], int debug_var)
 void loop() {
   
 
-  if(dmxChannels[CHANNEL_UPDATE_SLIDER]==255)
+  if(dmxChannels[CHANNEL_UPDATE_SLIDER]==255)  
   {
     dmxChannels[CHANNEL_UPDATE_SLIDER]=0;
-      // update automatique à chaque allumage (pendant la conception)
+      
   
-   WiFi.begin("OpenPoulpy", "youhououhou");
+   WiFi.begin("mrVOOlpy", "youhououhou");
           
           int tentatives = 0;
       while (WiFi.status() != WL_CONNECTED)
@@ -390,13 +349,7 @@ void loop() {
     delay(1000);
     ESP.restart();
     // fin update firmware (à retirer quand le code sera bon)
-    
-  }
-
-//test pour voir si l'update fonctionne toujours
-      //  stepper_tilt.run();
-
-
+    }
 
  
 
@@ -405,7 +358,8 @@ void loop() {
 
 
 
-  if(mode_slider==0)
+  //if(mode_slider==0)
+  if(true)
   {
     position =  dmxChannels[CHANNEL_POS_SLIDER];
     sequenceStart=true; // au prochain lancement d'une séquence, il faudra initialiser lastPositionTime
@@ -483,65 +437,65 @@ void loop() {
     
 
   }
-  else if (mode_slider>0) // on lance la séquence
-  {
-    if(sequenceStart) // au lancement de la séquence, on initialise lastPositionTime
-    {
-      newPosition=true;
-      lastPositionTime=millis();      
-      sequenceStart = false;
-      debug("position", position);
-    }
+  // else if (mode_slider>0) // on lance la séquence
+  // {
+  //   if(sequenceStart) // au lancement de la séquence, on initialise lastPositionTime
+  //   {
+  //     newPosition=true;
+  //     lastPositionTime=millis();      
+  //     sequenceStart = false;
+  //     debug("position", position);
+  //   }
 
-    if(newPosition)
-    {
-      if((position<0) || (position>28))position=0;
+  //   if(newPosition)
+  //   {
+  //     if((position<0) || (position>28))position=0;
 
-      lastSpeedSlider = dmxChannels[CHANNEL_SPEED_SLIDER + (NB_CHANNELS * position)];
-      lastSpeedPan = dmxChannels[CHANNEL_SPEED_PAN + (NB_CHANNELS * position)];
-      lastSpeedTilt = dmxChannels[CHANNEL_SPEED_TILT + (NB_CHANNELS * position)];
+  //     lastSpeedSlider = dmxChannels[CHANNEL_SPEED_SLIDER + (NB_CHANNELS * position)];
+  //     lastSpeedPan = dmxChannels[CHANNEL_SPEED_PAN + (NB_CHANNELS * position)];
+  //     lastSpeedTilt = dmxChannels[CHANNEL_SPEED_TILT + (NB_CHANNELS * position)];
       
-      stepper_slider.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedSlider)  * coeffSpeedPosX );
-      stepper_pan.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedPan) * coeffSpeedPan );
-      stepper_tilt.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedTilt) * coeffSpeedTilt );
+  //     stepper_slider.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedSlider)  * coeffSpeedPosX );
+  //     stepper_pan.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedPan) * coeffSpeedPan );
+  //     stepper_tilt.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedTilt) * coeffSpeedTilt );
 
-      stepper_slider.moveTo(dmxChannels[CHANNEL_POSX + (NB_CHANNELS * position)] * coeffPosX);
-      stepper_pan.moveTo((dmxChannels[CHANNEL_PAN + (NB_CHANNELS * position)]-lastOffsetPan) * coeffPan);
-      stepper_tilt.moveTo((dmxChannels[CHANNEL_TILT + (NB_CHANNELS * position)]-lastOffsetTilt) * coeffTilt);
+  //     stepper_slider.moveTo(dmxChannels[CHANNEL_POSX + (NB_CHANNELS * position)] * coeffPosX);
+  //     stepper_pan.moveTo((dmxChannels[CHANNEL_PAN + (NB_CHANNELS * position)]-lastOffsetPan) * coeffPan);
+  //     stepper_tilt.moveTo((dmxChannels[CHANNEL_TILT + (NB_CHANNELS * position)]-lastOffsetTilt) * coeffTilt);
 
-      newPosition=false;
-    }
+  //     newPosition=false;
+  //   }
     
-    bool srun = stepper_slider.run();
-    bool prun = stepper_pan.run();
-    bool trun = stepper_tilt.run();
+  //   bool srun = stepper_slider.run();
+  //   bool prun = stepper_pan.run();
+  //   bool trun = stepper_tilt.run();
 
-      if(!srun && !prun && !trun) // quand les moteurs ont tous atteints leur cible, on passe à la postition suivante dans la séquence
-      {
+  //     if(!srun && !prun && !trun) // quand les moteurs ont tous atteints leur cible, on passe à la postition suivante dans la séquence
+  //     {
         
-        //delay(1000);
-        unsigned long elapsedTime = millis()-lastPositionTime;
-        unsigned long totalTime = 100 * dmxChannels[CHANNEL_DELAY + (NB_CHANNELS * position)];
-        debug("elapsed time",elapsedTime);
-        debug("total time",totalTime);
+  //       //delay(1000);
+  //       unsigned long elapsedTime = millis()-lastPositionTime;
+  //       unsigned long totalTime = 100 * dmxChannels[CHANNEL_DELAY + (NB_CHANNELS * position)];
+  //       debug("elapsed time",elapsedTime);
+  //       debug("total time",totalTime);
 
-        if(totalTime>elapsedTime)
-        {
-          remainingWaitTime=totalTime-elapsedTime;
-          debug("remainingwaittime",remainingWaitTime);
-          delay(remainingWaitTime);
-        }
-        else
-        {
-          debug("remainingwaittime negatif",0);
-        }
-        position++;
-        newPosition=true;
-        lastPositionTime=millis();
-        debug("position", position);
-      }
+  //       if(totalTime>elapsedTime)
+  //       {
+  //         remainingWaitTime=totalTime-elapsedTime;
+  //         debug("remainingwaittime",remainingWaitTime);
+  //         delay(remainingWaitTime);
+  //       }
+  //       else
+  //       {
+  //         debug("remainingwaittime negatif",0);
+  //       }
+  //       position++;
+  //       newPosition=true;
+  //       lastPositionTime=millis();
+  //       debug("position", position);
+  //     }
       
-  }
+  // }
 
 
 }

@@ -1,502 +1,288 @@
+/*
+    Exemple d'un serveur web sur ESP8266 :
+    - Accessible via "http://mrslider.local"
+    - Formulaire pour configurer 7 paramètres (posx, pan, tilt, vitesses, accel)
+    - Route "/update_firmware" pour télécharger et flasher un nouveau firmware
+
+    Nécessite:
+      - tzapu/WiFiManager
+      - AccelStepper
+      - ESP8266mDNS (inclus dans le core ESP8266)
+      - ESP8266HTTPUpdate
+*/
 
 #define FIRMWARE_VERSION 149
-#define DEBUG_ENABLE false
+#define DEBUG_ENABLE true
 
 #include <Arduino.h>
-#include <AccelStepper.h>
-#include <MultiStepper.h>
-// D5 6 7 ok en input ou output sans restriction
-// dir D0 D3 D4 step D5 D6 D7
-#define PIN_SLIDER_DIR D0
-#define PIN_PAN_DIR D3
-#define PIN_TILT_DIR D4
-#define PIN_SLIDER_STEP D5
-#define PIN_PAN_STEP D6
-#define PIN_TILT_STEP D7
-
-
-
-AccelStepper stepper_slider = AccelStepper(1, PIN_SLIDER_STEP, PIN_SLIDER_DIR);
-AccelStepper stepper_pan = AccelStepper(1, PIN_PAN_STEP, PIN_PAN_DIR );
-AccelStepper stepper_tilt = AccelStepper(1, PIN_TILT_STEP, PIN_TILT_DIR);
-
-// version artnet en cours
-
-
-
-#include <Arduino.h>
-#include <EEPROM.h>
-#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
-
+#include <ESP8266WiFi.h>
+#include <WiFiManager.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266httpUpdate.h>
+#include <AccelStepper.h>
 
-//needed for library
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
-#include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
-WiFiManager wifiManager;
-#define APNAME "mrLEDTUBE12"
+// Pins des moteurs
+#define PIN_SLIDER_DIR   D0
+#define PIN_SLIDER_STEP  D5
+#define PIN_PAN_DIR      D3
+#define PIN_PAN_STEP     D6
+#define PIN_TILT_DIR     D4
+#define PIN_TILT_STEP    D7
 
-#include <ArtnetWifi.h>
-WiFiUDP UdpSend;
-ArtnetWifi artnet;
+// Objets AccelStepper
+AccelStepper stepper_slider(AccelStepper::DRIVER, PIN_SLIDER_STEP, PIN_SLIDER_DIR);
+AccelStepper stepper_pan   (AccelStepper::DRIVER, PIN_PAN_STEP,  PIN_PAN_DIR);
+AccelStepper stepper_tilt  (AccelStepper::DRIVER, PIN_TILT_STEP, PIN_TILT_DIR);
 
-#define EEPROM_SIZE 32
-#define DMXMODE true
-#define ARTNETMODE false
+// Paramètres globaux
+int posx         = 0;
+int pan          = 0;
+int tilt         = 0;
+int speed_posx   = 10;
+int speed_pan    = 10;
+int speed_tilt   = 10;
+int acceleration = 10;
 
+// Coefficients de conversion
+int coeffPosX       = 200;
+int coeffPan        = 100;
+int coeffTilt       = 25;
+int coeffSpeedPosX  = 100;
+int coeffSpeedPan   = 80;
+int coeffSpeedTilt  = 20;
+int coeffAccelPosX  = 100;
+int coeffAccelPan   = 50;
+int coeffAccelTilt  = 50;
 
-#define CHANNEL_POSX 1
-#define CHANNEL_PAN 2
-#define CHANNEL_TILT 3
-#define CHANNEL_SPEED_SLIDER 4
-#define CHANNEL_SPEED_PAN 5
-#define CHANNEL_SPEED_TILT 6
-#define CHANNEL_ACCELERATION 7
+// Création du serveur web
+ESP8266WebServer server(80);
 
-#define CHANNEL_UPDATE_SLIDER 10
-
-#define CHANNEL_POS_SLIDER 20
-#define CHANNEL_MODE_SLIDER 21
-#define CHANNEL_DELAY 21
-#define NB_CHANNELS 7
-
-
-#define CHANNEL_OFFSET_PAN 24
-#define CHANNEL_OFFSET_TILT 25
-
-
-
-#define MINIMUM_SPEED 5
-
-bool runningMode = DMXMODE;
-
-int lastposX= 0;
-int lastPan=0;
-int lastTilt=0;
-int lastSpeedSlider=0;
-int lastSpeedPan=0;
-int lastSpeedTilt=0;
-int lastOffsetPan=0;
-int lastOffsetTilt=0;
-int lastAccel=0;
-unsigned long lastPositionTime=0;
-
-bool newPosition = true;
-
-int coeffPosX = 200;
-int coeffPan = 100;
-int coeffTilt = 25;
-
-int coeffSpeedPosX = 100;
-int coeffSpeedPan = 80;
-int coeffSpeedTilt = 20;
-
-
-int coeffAccelPosX = 100;
-int coeffAccelPan = 50;
-int coeffAccelTilt = 50;
-
-int position = 0;
-int seqPosition = 0;
-
-unsigned long remainingWaitTime = 0;
-bool sequenceStart = true;
-
-
-
-
-
-#include <ESP8266WiFiMulti.h>
-#include <espnow.h>
-
-int setupAddress = 1;
-int setupMode = 254;
-int setupTubeNumber = 1;
-
-
-
-int flashInterval;
-
-uint8_t dmxChannels[513];
-
-typedef struct struct_message {
-    uint8_t status;
-    uint8_t data;    
-} struct_message;
-
-
-struct_message incomingMessage;
-struct_message outgoingMessage;
-
-typedef struct struct_dmx_message {
-    uint8_t dmx001;
-    uint8_t dmx002;
-    uint8_t dmx003;
-    uint8_t dmx004;
-        
-} struct_dmx_message;
-
-struct_dmx_message incomingDMXMessage;
-
-typedef struct struct_dmx_packet {
-    uint8_t blockNumber; // on divise les 512 adresses en 4 blocs de 128 adresses
-    uint8_t dmxvalues[128];   
-} struct_dmx_packet;
-
-struct_dmx_packet incomingDMXPacket;
-
-
-void OnDataSent(u8 *mac_addr, u8 status) {  
-     
-}
-
-
-// Callback when data is received
-void OnDataRecv(uint8_t * mac, uint8_t *incomingData, uint8_t len) {
-  memcpy(&incomingDMXPacket, incomingData, sizeof(incomingDMXPacket));  
-  uint8_t packetNumber = incomingDMXPacket.blockNumber;
-  for(int i=0;i<128;i++)
-  {
-    dmxChannels[(packetNumber*128)+i+1]=incomingDMXPacket.dmxvalues[i];
-  }
- 
-}
-
-
-
-double mrdoublemodulo(double nombre, double diviseur)
+//=== Fonctions de debug ===
+void debug(const char* txt, int val)
 {
-  while(nombre<0)nombre+=diviseur;
-  while(nombre>=diviseur)nombre-=diviseur;
-  return nombre;
+  if (DEBUG_ENABLE) {
+    Serial.print(txt);
+    Serial.print(" = ");
+    Serial.println(val);
+  }
 }
 
-
-
-
-
+//=== Callbacks de mise à jour ===
 void update_started() {
   Serial.println("CALLBACK:  HTTP update process started");
-  
 }
-
 void update_finished() {
-  
   Serial.println("CALLBACK:  HTTP update process finished");
 }
-
 void update_progress(int cur, int total) {
-  
   Serial.printf("CALLBACK:  HTTP update process at %d of %d bytes...\n", cur, total);
 }
-
 void update_error(int err) {
-  
   Serial.printf("CALLBACK:  HTTP update fatal error code %d\n", err);
 }
 
+//=== Fonction updateFirmware() ===
 void updateFirmware()
 {
+  // (Ré)essayer de se connecter sur "mrVOOlpy" / "youhououhou"
+  // Si vous préférez réutiliser la connexion WiFi actuelle,
+  // commentez ces lignes.
+  WiFi.mode(WIFI_STA);
+  WiFi.begin("mrVOOlpy", "youhououhou");
 
-  ESPhttpUpdate.setClientTimeout(2000);  // default was 8000
-  
-  if ((WiFi.status() == WL_CONNECTED)) {
-
-    WiFiClient client;
-
-    // The line below is optional. It can be used to blink the LED on the board during flashing
-    // The LED will be on during download of one buffer of data from the network. The LED will
-    // be off during writing that buffer to flash
-    // On a good connection the LED should flash regularly. On a bad connection the LED will be
-    // on much longer than it will be off. Other pins than LED_BUILTIN may be used. The second
-    // value is used to put the LED on. If the LED is on with HIGH, that value should be passed
-    ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);
-
-    // Add optional callback notifiers
-    ESPhttpUpdate.onStart(update_started);
-    ESPhttpUpdate.onEnd(update_finished);
-    ESPhttpUpdate.onProgress(update_progress);
-    ESPhttpUpdate.onError(update_error);
-
-    String firmwareURL = "http://mrsliderfirmware.gaetanstreel.com/firmware.bin";
-    firmwareURL.concat(FIRMWARE_VERSION+1);
-
-    Serial.print("firmwareURL = ");
-    Serial.println(firmwareURL);
-    
-  
-
-
-    t_httpUpdate_return ret = ESPhttpUpdate.update(client, firmwareURL.c_str());
-    // Or:
-    // t_httpUpdate_return ret = ESPhttpUpdate.update(client, "server", 80, "file.bin");
-
-    switch (ret) {
-      case HTTP_UPDATE_FAILED: Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str()); 
-                
-        break;
-
-      case HTTP_UPDATE_NO_UPDATES: Serial.println("HTTP_UPDATE_NO_UPDATES"); break;
-
-      case HTTP_UPDATE_OK: Serial.println("HTTP_UPDATE_OK"); 
-          
-      break;
+  Serial.println("Tentative de connexion WiFi pour update firmware...");
+  int tentatives = 0;
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    Serial.print('.');
+    if (++tentatives > 20) {
+      Serial.println("Échec de connexion WiFi. Abandon de l'update.");
+      return;
     }
   }
-  
+  Serial.println("\nWiFi connecté.");
+
+  // Configuration de l'update
+  ESPhttpUpdate.setLedPin(LED_BUILTIN, LOW);
+  ESPhttpUpdate.onStart(update_started);
+  ESPhttpUpdate.onEnd(update_finished);
+  ESPhttpUpdate.onProgress(update_progress);
+  ESPhttpUpdate.onError(update_error);
+
+  // Exemple : on utilise le firmware "http://mrsliderfirmware.gaetanstreel.com/firmware.binXXX"
+  String firmwareURL = "http://mrsliderfirmware.gaetanstreel.com/firmware.bin";
+  firmwareURL += (FIRMWARE_VERSION + 1);
+
+  Serial.print("URL Firmware: ");
+  Serial.println(firmwareURL);
+
+  WiFiClient client;
+  t_httpUpdate_return ret = ESPhttpUpdate.update(client, firmwareURL.c_str());
+  switch (ret) {
+    case HTTP_UPDATE_FAILED:
+      Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n",
+                    ESPhttpUpdate.getLastError(),
+                    ESPhttpUpdate.getLastErrorString().c_str());
+      break;
+
+    case HTTP_UPDATE_NO_UPDATES:
+      Serial.println("HTTP_UPDATE_NO_UPDATES");
+      break;
+
+    case HTTP_UPDATE_OK:
+      // L’ESP redémarre automatiquement après update OK
+      Serial.println("HTTP_UPDATE_OK");
+      break;
+  }
 }
 
-void setup() {
+//=== Page HTML du formulaire ===
+String htmlForm()
+{
+  String page = "<!DOCTYPE html><html><head><meta charset='utf-8'/>";
+  page += "<title>MrSlider - Paramètres</title></head><body>";
+  page += "<h1>Configuration Slider (FW v";
+  page += FIRMWARE_VERSION;
+  page += ")</h1>";
+  page += "<form action='/setParams' method='GET'>";
 
-  
-  Serial.begin(57600);
+  page += "<label>posx: </label><input type='number' name='posx' value='" + String(posx) + "'><br><br>";
+  page += "<label>pan: </label><input type='number' name='pan' value='" + String(pan) + "'><br><br>";
+  page += "<label>tilt: </label><input type='number' name='tilt' value='" + String(tilt) + "'><br><br>";
+  page += "<label>vitesse_posx: </label><input type='number' name='speed_posx' value='" + String(speed_posx) + "'><br><br>";
+  page += "<label>vitesse_pan: </label><input type='number' name='speed_pan' value='" + String(speed_pan) + "'><br><br>";
+  page += "<label>vitesse_tilt: </label><input type='number' name='speed_tilt' value='" + String(speed_tilt) + "'><br><br>";
+  page += "<label>acceleration: </label><input type='number' name='acceleration' value='" + String(acceleration) + "'><br><br>";
+
+  page += "<input type='submit' value='Appliquer'/>";
+  page += "</form><br>";
+  page += "<p><a href='/update_firmware'>Mise à jour du firmware</a></p>";
+  page += "</body></html>";
+  return page;
+}
+
+//=== Handler page racine "/" ===
+void handleRoot()
+{
+  server.send(200, "text/html", htmlForm());
+}
+
+//=== Handler soumission formulaire "/setParams" ===
+void handleSetParams()
+{
+  if (server.hasArg("posx"))         posx         = server.arg("posx").toInt();
+  if (server.hasArg("pan"))          pan          = server.arg("pan").toInt();
+  if (server.hasArg("tilt"))         tilt         = server.arg("tilt").toInt();
+  if (server.hasArg("speed_posx"))   speed_posx   = server.arg("speed_posx").toInt();
+  if (server.hasArg("speed_pan"))    speed_pan    = server.arg("speed_pan").toInt();
+  if (server.hasArg("speed_tilt"))   speed_tilt   = server.arg("speed_tilt").toInt();
+  if (server.hasArg("acceleration")) acceleration = server.arg("acceleration").toInt();
+
+  debug("posx", posx);
+  debug("pan", pan);
+  debug("tilt", tilt);
+  debug("speed_posx", speed_posx);
+  debug("speed_pan", speed_pan);
+  debug("speed_tilt", speed_tilt);
+  debug("acceleration", acceleration);
+
+  // Mise à jour des stepper
+  stepper_slider.moveTo(posx * coeffPosX);
+  stepper_pan.moveTo(pan * coeffPan);
+  stepper_tilt.moveTo(tilt * coeffTilt);
+
+  stepper_slider.setMaxSpeed(max(1, speed_posx) * coeffSpeedPosX);
+  stepper_pan.setMaxSpeed(max(1, speed_pan)    * coeffSpeedPan);
+  stepper_tilt.setMaxSpeed(max(1, speed_tilt)  * coeffSpeedTilt);
+
+  stepper_slider.setAcceleration(acceleration * coeffAccelPosX);
+  stepper_pan.setAcceleration(acceleration     * coeffAccelPan);
+  stepper_tilt.setAcceleration(acceleration    * coeffAccelTilt);
+
+  String message = "<!DOCTYPE html><html><head><meta charset='utf-8'/>";
+  message += "<title>MrSlider - Paramètres appliqués</title></head><body>";
+  message += "<h2>Paramètres mis à jour !</h2>";
+  message += "<p><a href='/'>Retour</a></p>";
+  message += "</body></html>";
+
+  server.send(200, "text/html", message);
+}
+
+//=== Handler "/update_firmware" ===
+void handleUpdateFirmware()
+{
+  // Retour HTTP immédiat (optionnel). 
+  // Vous pouvez aussi afficher "Mise à jour en cours..." puis faire la mise à jour.
+  server.send(200, "text/html", "<h2>Mise à jour en cours... (voir Serial)</h2>");
+
+  // Lancement de la mise à jour
+  updateFirmware();
+
+  // Après le flash, si ça réussit, l'ESP redémarrera de lui-même. 
+  // Sinon, il reste sur l'ancienne version.
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.println();
   Serial.print("FIRMWARE VERSION : ");
   Serial.println(FIRMWARE_VERSION);
 
-
-
-
-// initialisation des pins du step motor driver
+  // Pins en sortie
+  pinMode(PIN_SLIDER_DIR,  OUTPUT);
   pinMode(PIN_SLIDER_STEP, OUTPUT);
-  pinMode(PIN_SLIDER_DIR, OUTPUT);
-  pinMode(PIN_PAN_STEP, OUTPUT);
-  pinMode(PIN_PAN_DIR, OUTPUT);
-  pinMode(PIN_TILT_STEP, OUTPUT);
-  pinMode(PIN_TILT_DIR, OUTPUT);
-  
+  pinMode(PIN_PAN_DIR,     OUTPUT);
+  pinMode(PIN_PAN_STEP,    OUTPUT);
+  pinMode(PIN_TILT_DIR,    OUTPUT);
+  pinMode(PIN_TILT_STEP,   OUTPUT);
 
- 
-  
-  WiFi.disconnect();
-  ESP.eraseConfig();
- 
-  // Wifi STA Mode
-  WiFi.mode(WIFI_STA);
-  // Get Mac Add
-  //Serial.print("Mac Address: ");
-  Serial.print(WiFi.macAddress());
-  //Serial.println("\nESP-Now Receiver");
-  
-  // Initializing the ESP-NOW
-   if (esp_now_init() != 0) {
-    Serial.println("Problem during ESP-NOW init");
-    return;
-     }
+  // Config moteur
+  stepper_slider.setAcceleration(2000);
+  stepper_slider.setMaxSpeed(2000);
+  stepper_pan.setAcceleration(2000);
+  stepper_pan.setMaxSpeed(2000);
+  stepper_tilt.setAcceleration(2000);
+  stepper_tilt.setMaxSpeed(2000);
 
-    esp_now_register_recv_cb(OnDataRecv);
-  
-  // stepper_tilt.setMaxSpeed(200);
-  // stepper_tilt.moveTo(10000);
+  // WiFiManager : connexion ou AP si pas d'ID stocké
+  WiFiManager wifiManager;
+  // wifiManager.resetSettings(); // Décommentez pour effacer la config WiFi enregistrée
+  wifiManager.autoConnect("MrSlider_AP");
 
+  Serial.print("Connecté au WiFi. IP: ");
+  Serial.println(WiFi.localIP());
 
-
-}
-
-
-void setSpeed(int speed)
-{
-      stepper_slider.setMaxSpeed(speed * coeffSpeedPosX );
-      stepper_pan.setMaxSpeed(speed * coeffSpeedPan );
-      stepper_tilt.setMaxSpeed(speed * coeffSpeedTilt );
-}
-
-void setSpeedAll(int speedSlider, int speedPan, int speedTilt)
-{
-      stepper_slider.setMaxSpeed(speedSlider * coeffSpeedPosX );
-      stepper_pan.setMaxSpeed(speedPan * coeffSpeedPan );
-      stepper_tilt.setMaxSpeed(speedTilt * coeffSpeedTilt );
-}
-
-void debug(const char debug_txt[], int debug_var)
-{
-  if(DEBUG_ENABLE)
-  {
-    Serial.print(debug_txt);
-    Serial.print(" = ");
-    Serial.println(debug_var);
+  // Activer mDNS
+  if (MDNS.begin("mrslider")) {
+    Serial.println("mDNS responder started => http://mrslider.local");
+  } else {
+    Serial.println("Erreur initialisation mDNS");
   }
-  else return;
 
+  // Routes du serveur
+  server.on("/",         HTTP_GET, handleRoot);
+  server.on("/setParams",HTTP_GET, handleSetParams);
+  server.on("/update_firmware", HTTP_GET, handleUpdateFirmware);
+
+  server.onNotFound([]() {
+    server.send(404, "text/plain", "Not found");
+  });
+
+  server.begin();
+  Serial.println("Serveur web démarré sur le port 80");
 }
 
-void loop() {
-  
+void loop()
+{
+  server.handleClient();
+  MDNS.update();
 
-  if(dmxChannels[CHANNEL_UPDATE_SLIDER]==255)  
-  {
-    dmxChannels[CHANNEL_UPDATE_SLIDER]=0;
-      
-  
-   WiFi.begin("mrVOOlpy", "youhououhou");
-          
-          int tentatives = 0;
-      while (WiFi.status() != WL_CONNECTED)
-      {
-          delay(1000);
-          
-          Serial.print(".");
-          
-          if (tentatives > 20)
-          {            
-            break;
-          }
-          tentatives++;
-      }
-    updateFirmware();
-    
-    delay(1000);
-    ESP.restart();
-    // fin update firmware (à retirer quand le code sera bon)
-    }
-
- 
-
-  int mode_slider = dmxChannels[CHANNEL_MODE_SLIDER];
-  
-
-
-
-  //if(mode_slider==0)
-  if(true)
-  {
-    position =  dmxChannels[CHANNEL_POS_SLIDER];
-    sequenceStart=true; // au prochain lancement d'une séquence, il faudra initialiser lastPositionTime
-    
-    
-       if(dmxChannels[CHANNEL_SPEED_SLIDER+(NB_CHANNELS*position)]!=lastSpeedSlider)
-    {
-      lastSpeedSlider=dmxChannels[CHANNEL_SPEED_SLIDER+(NB_CHANNELS*position)];
-      stepper_slider.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedSlider) * coeffSpeedPosX );
-      
-      
-    }
-    
-     if(dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)]!=lastSpeedPan)
-    {
-      lastSpeedPan=dmxChannels[CHANNEL_SPEED_PAN+(NB_CHANNELS*position)];
-      stepper_pan.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedPan) * coeffSpeedPan );
-      
-    }
-     if(dmxChannels[CHANNEL_SPEED_TILT+(NB_CHANNELS*position)]!=lastSpeedTilt)
-    {
-      lastSpeedTilt=dmxChannels[CHANNEL_SPEED_TILT+(NB_CHANNELS*position)];
-      stepper_tilt.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedTilt) * coeffSpeedTilt );
-      
-    }
-
-
-
-    if(dmxChannels[CHANNEL_ACCELERATION]!=lastAccel)
-    {
-      lastAccel=dmxChannels[CHANNEL_ACCELERATION];
-      stepper_slider.setAcceleration(lastAccel * coeffAccelPosX );
-      stepper_pan.setAcceleration(lastAccel * coeffAccelPan );
-      stepper_tilt.setAcceleration(lastAccel * coeffAccelTilt );      
-    }
-  
-    if(dmxChannels[CHANNEL_POSX+(NB_CHANNELS*position)]!=lastposX)
-    {
-      lastposX=dmxChannels[CHANNEL_POSX+(NB_CHANNELS*position)];
-      stepper_slider.moveTo(lastposX*coeffPosX);   	
-    }
-    
-     if(dmxChannels[CHANNEL_OFFSET_PAN]!=lastOffsetPan)
-    {
-      lastOffsetPan=dmxChannels[CHANNEL_OFFSET_PAN];     
-      stepper_pan.moveTo((lastPan-lastOffsetPan)*coeffPan);   	
-    }
-
-    if(dmxChannels[CHANNEL_PAN+(NB_CHANNELS*position)]!=lastPan)
-    {
-      lastPan=dmxChannels[CHANNEL_PAN+(NB_CHANNELS*position)];
-      stepper_pan.moveTo((lastPan-lastOffsetPan)*coeffPan);   	
-    }
-    
-   
-
-    if(dmxChannels[CHANNEL_OFFSET_TILT]!=lastOffsetTilt)
-    {
-      lastOffsetTilt=dmxChannels[CHANNEL_OFFSET_TILT];     
-      stepper_tilt.moveTo((lastTilt-lastOffsetTilt)*coeffTilt);   	
-    }
-
-    if(dmxChannels[CHANNEL_TILT+(NB_CHANNELS*position)]!=lastTilt)
-    {
-      lastTilt=dmxChannels[CHANNEL_TILT+(NB_CHANNELS*position)];
-      stepper_tilt.moveTo((lastTilt-lastOffsetTilt)*coeffTilt);   	
-    }
-
-     
-
-    stepper_slider.run();
-    stepper_pan.run();
-    stepper_tilt.run();
-
-    
-
-  }
-  // else if (mode_slider>0) // on lance la séquence
-  // {
-  //   if(sequenceStart) // au lancement de la séquence, on initialise lastPositionTime
-  //   {
-  //     newPosition=true;
-  //     lastPositionTime=millis();      
-  //     sequenceStart = false;
-  //     debug("position", position);
-  //   }
-
-  //   if(newPosition)
-  //   {
-  //     if((position<0) || (position>28))position=0;
-
-  //     lastSpeedSlider = dmxChannels[CHANNEL_SPEED_SLIDER + (NB_CHANNELS * position)];
-  //     lastSpeedPan = dmxChannels[CHANNEL_SPEED_PAN + (NB_CHANNELS * position)];
-  //     lastSpeedTilt = dmxChannels[CHANNEL_SPEED_TILT + (NB_CHANNELS * position)];
-      
-  //     stepper_slider.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedSlider)  * coeffSpeedPosX );
-  //     stepper_pan.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedPan) * coeffSpeedPan );
-  //     stepper_tilt.setMaxSpeed(max(MINIMUM_SPEED,lastSpeedTilt) * coeffSpeedTilt );
-
-  //     stepper_slider.moveTo(dmxChannels[CHANNEL_POSX + (NB_CHANNELS * position)] * coeffPosX);
-  //     stepper_pan.moveTo((dmxChannels[CHANNEL_PAN + (NB_CHANNELS * position)]-lastOffsetPan) * coeffPan);
-  //     stepper_tilt.moveTo((dmxChannels[CHANNEL_TILT + (NB_CHANNELS * position)]-lastOffsetTilt) * coeffTilt);
-
-  //     newPosition=false;
-  //   }
-    
-  //   bool srun = stepper_slider.run();
-  //   bool prun = stepper_pan.run();
-  //   bool trun = stepper_tilt.run();
-
-  //     if(!srun && !prun && !trun) // quand les moteurs ont tous atteints leur cible, on passe à la postition suivante dans la séquence
-  //     {
-        
-  //       //delay(1000);
-  //       unsigned long elapsedTime = millis()-lastPositionTime;
-  //       unsigned long totalTime = 100 * dmxChannels[CHANNEL_DELAY + (NB_CHANNELS * position)];
-  //       debug("elapsed time",elapsedTime);
-  //       debug("total time",totalTime);
-
-  //       if(totalTime>elapsedTime)
-  //       {
-  //         remainingWaitTime=totalTime-elapsedTime;
-  //         debug("remainingwaittime",remainingWaitTime);
-  //         delay(remainingWaitTime);
-  //       }
-  //       else
-  //       {
-  //         debug("remainingwaittime negatif",0);
-  //       }
-  //       position++;
-  //       newPosition=true;
-  //       lastPositionTime=millis();
-  //       debug("position", position);
-  //     }
-      
-  // }
-
-
+  // Faire tourner les stepper
+  stepper_slider.run();
+  stepper_pan.run();
+  stepper_tilt.run();
 }
-

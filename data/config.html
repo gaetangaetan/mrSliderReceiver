@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration MrSlider</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .config-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .config-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .config-item label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #495057;
+        }
+        .config-item input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .config-item input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        .btn-primary {
+            background: #007bff;
+            border: 1px solid #007bff;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+            border-color: #0056b3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            border: 1px solid #6c757d;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+            border-color: #545b62;
+            color: white;
+            text-decoration: none;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .status-message {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .range-display {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Configuration MrSlider</h1>
+            <div class="firmware-info">Firmware v<span id="firmware-version">158</span></div>
+        </header>
+
+        <main>
+            <form id="configForm">
+                <!-- Position Limits -->
+                <section class="config-section">
+                    <h2>Limites des Positions</h2>
+                    <div class="config-group">
+                        <div class="config-item">
+                            <label for="posx_min">Position X - Minimum</label>
+                            <input type="number" id="posx_min" name="posx_min" value="0">
+                            <div class="range-display">Valeur minimale pour le slider Position X</div>
+                        </div>
+                        <div class="config-item">
+                            <label for="posx_max">Position X - Maximum</label>
+                            <input type="number" id="posx_max" name="posx_max" value="100">
+                            <div class="range-display">Valeur maximale pour le slider Position X</div>
+                        </div>
+                        <div class="config-item">
+                            <label for="pan_min">Pan - Minimum</label>
+                            <input type="number" id="pan_min" name="pan_min" value="-50">
+                            <div class="range-display">Valeur minimale pour le slider Pan</div>
+                        </div>
+                        <div class="config-item">
+                            <label for="pan_max">Pan - Maximum</label>
+                            <input type="number" id="pan_max" name="pan_max" value="50">
+                            <div class="range-display">Valeur maximale pour le slider Pan</div>
+                        </div>
+                        <div class="config-item">
+                            <label for="tilt_min">Tilt - Minimum</label>
+                            <input type="number" id="tilt_min" name="tilt_min" value="-50">
+                            <div class="range-display">Valeur minimale pour le slider Tilt</div>
+                        </div>
+                        <div class="config-item">
+                            <label for="tilt_max">Tilt - Maximum</label>
+                            <input type="number" id="tilt_max" name="tilt_max" value="50">
+                            <div class="range-display">Valeur maximale pour le slider Tilt</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Speed Limits -->
+                <section class="config-section">
+                    <h2>Limites des Vitesses</h2>
+                    <div class="config-group">
+                        <div class="config-item">
+                            <label for="speed_min">Vitesse - Minimum</label>
+                            <input type="number" id="speed_min" name="speed_min" value="1" min="1">
+                            <div class="range-display">Valeur minimale pour tous les sliders de vitesse</div>
+                        </div>
+                        <div class="config-item">
+                            <label for="speed_max">Vitesse - Maximum</label>
+                            <input type="number" id="speed_max" name="speed_max" value="100" min="1">
+                            <div class="range-display">Valeur maximale pour tous les sliders de vitesse</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Acceleration Limits -->
+                <section class="config-section">
+                    <h2>Limites de l'Accélération</h2>
+                    <div class="config-group">
+                        <div class="config-item">
+                            <label for="accel_min">Accélération - Minimum</label>
+                            <input type="number" id="accel_min" name="accel_min" value="1" min="1">
+                            <div class="range-display">Valeur minimale pour le slider d'accélération</div>
+                        </div>
+                        <div class="config-item">
+                            <label for="accel_max">Accélération - Maximum</label>
+                            <input type="number" id="accel_max" name="accel_max" value="100" min="1">
+                            <div class="range-display">Valeur maximale pour le slider d'accélération</div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="actions">
+                    <button type="submit" class="btn-primary">Appliquer et Sauvegarder</button>
+                    <a href="/" class="btn-secondary">Retour à l'accueil</a>
+                    <button type="button" id="loadConfig" class="btn-secondary">Recharger</button>
+                </div>
+
+                <div id="statusMessage" class="status-message"></div>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        // Charger la configuration actuelle
+        async function loadCurrentConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                // Remplir les champs avec les valeurs actuelles
+                Object.keys(config).forEach(key => {
+                    const input = document.getElementById(key);
+                    if (input) {
+                        input.value = config[key];
+                    }
+                });
+                
+                showStatus('Configuration chargée', 'success');
+            } catch (error) {
+                showStatus('Erreur lors du chargement de la configuration', 'error');
+                console.error('Erreur:', error);
+            }
+        }
+
+        // Sauvegarder la configuration
+        async function saveConfig(configData) {
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(configData)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showStatus('Configuration sauvegardée avec succès!', 'success');
+                } else {
+                    showStatus(`Erreur: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('Erreur lors de la sauvegarde', 'error');
+                console.error('Erreur:', error);
+            }
+        }
+
+        // Afficher un message de statut
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.style.display = 'block';
+            
+            // Masquer le message après 3 secondes
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Gestionnaire de soumission du formulaire
+        document.getElementById('configForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const configData = {};
+            
+            // Convertir les valeurs en nombres
+            for (let [key, value] of formData.entries()) {
+                configData[key] = parseInt(value);
+            }
+            
+            // Validation côté client
+            if (configData.posx_min >= configData.posx_max ||
+                configData.pan_min >= configData.pan_max ||
+                configData.tilt_min >= configData.tilt_max ||
+                configData.speed_min >= configData.speed_max ||
+                configData.accel_min >= configData.accel_max) {
+                showStatus('Erreur: Les valeurs minimales doivent être inférieures aux maximales', 'error');
+                return;
+            }
+            
+            await saveConfig(configData);
+        });
+
+        // Bouton de rechargement
+        document.getElementById('loadConfig').addEventListener('click', loadCurrentConfig);
+
+        // Charger la configuration au démarrage
+        document.addEventListener('DOMContentLoaded', loadCurrentConfig);
+    </script>
+</body>
+</html>

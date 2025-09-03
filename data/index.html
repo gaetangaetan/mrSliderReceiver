@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MrSlider Control</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MrSlider Control</h1>
+            <div class="firmware-info">Firmware v<span id="firmware-version">162</span></div>
+        </header>
+
+        <main>
+            <!-- Position Controls -->
+            <section class="control-section">
+                <h2>Positions</h2>
+                <div class="slider-group">
+                    <div class="slider-container">
+                        <label for="posx">Position X</label>
+                        <input type="range" id="posx" min="0" max="100" value="0" class="slider slider-red">
+                        <span class="value" id="posx-value">0</span>
+                    </div>
+                    <div class="slider-container">
+                        <label for="pan">Pan</label>
+                        <input type="range" id="pan" min="-50" max="50" value="0" class="slider slider-green">
+                        <span class="value" id="pan-value">0</span>
+                    </div>
+                    <div class="slider-container">
+                        <label for="tilt">Tilt</label>
+                        <input type="range" id="tilt" min="-50" max="50" value="0" class="slider slider-blue">
+                        <span class="value" id="tilt-value">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Speed Controls -->
+            <section class="control-section">
+                <h2>Vitesses</h2>
+                <div class="slider-group">
+                    <div class="slider-container">
+                        <label for="speed_posx">Vitesse X</label>
+                        <input type="range" id="speed_posx" min="1" max="100" value="10" class="slider slider-red">
+                        <span class="value" id="speed_posx-value">10</span>
+                    </div>
+                    <div class="slider-container">
+                        <label for="speed_pan">Vitesse Pan</label>
+                        <input type="range" id="speed_pan" min="1" max="100" value="10" class="slider slider-green">
+                        <span class="value" id="speed_pan-value">10</span>
+                    </div>
+                    <div class="slider-container">
+                        <label for="speed_tilt">Vitesse Tilt</label>
+                        <input type="range" id="speed_tilt" min="1" max="100" value="10" class="slider slider-blue">
+                        <span class="value" id="speed_tilt-value">10</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Acceleration Control -->
+            <section class="control-section">
+                <h2>Accélération</h2>
+                <div class="slider-group">
+                    <div class="slider-container">
+                        <label for="acceleration">Accélération globale</label>
+                        <input type="range" id="acceleration" min="1" max="100" value="10" class="slider slider-purple">
+                        <span class="value" id="acceleration-value">10</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Presets -->
+            <section class="control-section">
+                <h2>Presets</h2>
+                <div class="preset-controls">
+                    <div class="preset-group">
+                        <h3>Sauvegarder</h3>
+                        <div class="button-row">
+                            <button class="preset-btn save-btn" data-slot="1">S1</button>
+                            <button class="preset-btn save-btn" data-slot="2">S2</button>
+                            <button class="preset-btn save-btn" data-slot="3">S3</button>
+                            <button class="preset-btn save-btn" data-slot="4">S4</button>
+                            <button class="preset-btn save-btn" data-slot="5">S5</button>
+                            <button class="preset-btn save-btn" data-slot="6">S6</button>
+                        </div>
+                    </div>
+                    <div class="preset-group">
+                        <h3>Charger</h3>
+                        <div class="button-row">
+                            <button class="preset-btn load-btn" data-slot="1">L1</button>
+                            <button class="preset-btn load-btn" data-slot="2">L2</button>
+                            <button class="preset-btn load-btn" data-slot="3">L3</button>
+                            <button class="preset-btn load-btn" data-slot="4">L4</button>
+                            <button class="preset-btn load-btn" data-slot="5">L5</button>
+                            <button class="preset-btn load-btn" data-slot="6">L6</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Mode Automatique -->
+            <section class="control-section">
+                <h2>Mode Automatique</h2>
+                <div class="auto-controls">
+                    <div class="auto-config">
+                        <div class="auto-row">
+                            <div class="auto-item">
+                                <label for="preset-a">Preset A</label>
+                                <select id="preset-a">
+                                    <option value="1">Preset 1</option>
+                                    <option value="2">Preset 2</option>
+                                    <option value="3">Preset 3</option>
+                                    <option value="4">Preset 4</option>
+                                    <option value="5">Preset 5</option>
+                                    <option value="6">Preset 6</option>
+                                </select>
+                            </div>
+                            <div class="auto-item">
+                                <label for="preset-b">Preset B</label>
+                                <select id="preset-b">
+                                    <option value="1">Preset 1</option>
+                                    <option value="2" selected>Preset 2</option>
+                                    <option value="3">Preset 3</option>
+                                    <option value="4">Preset 4</option>
+                                    <option value="5">Preset 5</option>
+                                    <option value="6">Preset 6</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="auto-row">
+                            <div class="auto-item delay-item">
+                                <label for="auto-delay">Délai (secondes)</label>
+                                <input type="range" id="auto-delay" min="1" max="60" value="5" class="slider slider-orange">
+                                <span class="value" id="auto-delay-value">5</span>
+                            </div>
+                        </div>
+                        <div class="auto-row">
+                            <div class="auto-item switch-item">
+                                <label class="switch">
+                                    <input type="checkbox" id="auto-toggle">
+                                    <span class="switch-slider"></span>
+                                </label>
+                                <span class="switch-label">Mode automatique</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="auto-status" id="auto-status">
+                        <div class="status-text">Mode manuel</div>
+                        <div class="status-timer" id="status-timer"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <div class="status">
+                <span id="connection-status">Connecté</span>
+                <span id="update-indicator">●</span>
+            </div>
+            <div style="margin-top: 10px; text-align: center;">
+                <a href="/config" style="color: #007bff; text-decoration: none; font-size: 14px;">⚙️ Configuration</a>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/script.js"></script>
+</body>
+</html>
